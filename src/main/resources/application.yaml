@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/picassolve
+    username: postgres
+    password: password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none          # ⬅️ 스키마는 schema.sql로 생성할 것이므로 none 권장
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  sql:
+    init:
+      mode: never           # ⬅️ schema.sql → data.sql 순으로 실행
+  thymeleaf:
+    cache: false
+
+server:
+  port: 8099
+
+logging:
+  level:
+    org.springframework.web.socket: INFO

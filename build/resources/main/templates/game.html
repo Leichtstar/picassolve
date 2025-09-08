@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>PicasSolve</title>
+  <link rel="stylesheet" href="/game.css">
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div class="left">
+      <strong th:text="'😉 안녕하세요, ' + ${name} + '님'">안녕하세요</strong>
+      <!-- ⬇ 링크 대신 버튼형 -->
+      <button type="button" class="btn-logout" onclick="location.href='/logout'">로그아웃</button>
+      <div id="clock" class="clock">--:--:--</div>
+    </div>
+
+    <div class="center">
+      <span id="adminWord" class="secret" style="display:none">제시어 : </span>
+    </div>
+
+    <!-- ⬇ 오른쪽 묶음: (관리자 컨트롤) -->
+    <div class="right-wrap">
+      <div class="admin-controls" id="adminControls" style="display:none" >
+        <strong>/  [관리자 옵션] 출제자 지목 : </strong>
+        <input id="drawerName" placeholder="이름" />
+        <button id="btnSetDrawer">지정</button>
+      </div>
+
+      <!-- ★ 참여자 전용 버튼 -->
+      <button id="btnMeDraw" style="display:none">내가 그리기</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="left">
+    <div class="board-stack">
+      <canvas id="board" width="770" height="600"></canvas>
+      <div class="tools">
+        <input type="color" id="color" value="#000000">
+        <input type="range" id="width" min="1" max="20" value="3">
+        <button id="btnEraser" type="button" title="지우개(T)">🩹</button>
+        <button id="btnUndo"   type="button" title="실행취소(Ctrl+Z)">↶</button>
+        <button id="btnClear"  type="button" title="완전히 지우기">🗑️</button>
+        <!-- ↓ 이 라벨만으로 모든 역할 안내를 처리 -->
+        <span id="drawRoleHint">현재 출제자 확인 중…</span>
+      </div>
+    </div>
+  </section>
+  <section class="right">
+    <div class="panel">
+      <h3>🗨️ 채팅</h3>
+      <div id="chatlog"></div>
+      <div class="chatbox" style="display:flex;gap:6px">
+        <input id="msg" placeholder="정답 또는 채팅" autocomplete="off" style="flex:1">
+        <button id="send">보내기</button>
+      </div>
+      <!-- 출제자 전용: 제시어 다시받기 -->
+      <button id="btnRerollWord" style="display:none; margin-top:6px;">제시어 다시받기</button>
+    </div>
+    <div class="panel">
+      <h3>👀 참여자</h3>
+      <ul id="users"></ul>
+    </div>
+    <div class="panel">
+      <h3>🏆 랭킹</h3>
+      <ol id="ranking"></ol>
+    </div>
+  </section>
+</main>
+
+<script th:inline="javascript">
+  // 서버에서 전달한 내 이름을 전역으로 노출
+  window.MY_NAME = /*[[${name}]]*/ 'guest';
+  window.SESSION_ID = /*[[${sid}]]*/ '';
+</script>
+<script src="/game.js"></script>
+</body>
+</html>
