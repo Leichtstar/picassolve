@@ -10,15 +10,8 @@ HTML/CSS와 Spring Boot만으로 작동하는 **실시간 그림 퀴즈** 샘플
 - Gradle(또는 IntelliJ에서 Gradle 지원)
 
 ### 2) 실행
-```bash
-gradlew bootRun
-# 또는
-./gradlew bootRun
-```
 
-브라우저에서 `http://localhost:8080/login` 접속 → `data.sql`에 등록된 이름으로 로그인.
-
-- 기본 사용자: `송언석`(관리자), `김하나`, `이둘`, `박셋`
+브라우저에서 `http://localhost:8099/login` 접속 → `data.sql`에 등록된 이름으로 로그인.
 
 ### 3) 동작
 - 관리자는 헤더 우측의 입력창에 이름을 넣고 **출제자 지정** 버튼 클릭.
@@ -30,7 +23,3 @@ gradlew bootRun
 - STOMP 엔드포인트: `/ws`
 - 발행(prefix): `/app`
 - 브로커 구독: `/topic/*`, 사용자 큐: `/user/queue/*`
-
-## 주의/확장
-- 데모를 위해 **H2 메모리 DB**와 간단한 **온라인 사용자 추적(Set)** 을 사용합니다.
-- 운영 시에는 Redis Pub/Sub, 세션 스토리지, 권한 강화 등을 고려하세요.
