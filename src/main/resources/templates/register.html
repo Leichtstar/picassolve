@@ -3,13 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <title>PicasSolve 회원가입</title>
-  <link rel="stylesheet" href="/login.css">
+  <link rel="stylesheet" href="/css/login.css">
 </head>
-<body>
-  <div class="login-page">
-    <div class="login-card">
-      <h1>회원가입</h1>
-      <p>게임에 참여할 이름, 비밀번호, 팀 번호를 입력하세요.</p>
+<body class="auth register">
+  <div class="auth-shell">
+    <div class="auth-card auth-card--stack">
+      <div class="auth-header">
+        <h1>회원가입</h1>
+        <p>게임에 참여할 이름과 비밀번호, 팀 번호를 입력하세요.</p>
+      </div>
+
+      <div class="alert alert-error" th:if="${errorMessage}">
+        <span class="alert-icon">!</span>
+        <span th:text="${errorMessage}"></span>
+      </div>
 
       <form method="post" action="/register" class="form">
         <input id="name" name="name" class="input" placeholder="이름"
@@ -17,11 +24,12 @@
         <input id="password" name="password" class="input" type="password" placeholder="비밀번호" required>
         <input id="team" name="team" class="input" type="number" min="0" placeholder="팀 번호"
                th:value="${prefillTeam == null ? 0 : prefillTeam}" required>
-        <button type="submit" class="btn">가입 완료</button>
-      </form>
 
-      <p class="err" th:if="${errorMessage}" th:text="${errorMessage}"></p>
-      <p class="link"><a href="/login">이미 계정이 있다면 로그인</a></p>
+        <div class="actions">
+          <button type="button" class="btn btn-outline" onclick="window.location.href='/login'">돌아가기</button>
+          <button type="submit" class="btn btn-primary">회원가입</button>
+        </div>
+      </form>
     </div>
   </div>
 </body>

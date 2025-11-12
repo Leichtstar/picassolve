@@ -3,24 +3,41 @@
 <head>
   <meta charset="UTF-8">
   <title>PicasSolve 로그인</title>
-  <link rel="stylesheet" href="/login.css">
+  <link rel="stylesheet" href="/css/login.css">
 </head>
-<body>
-  <div class="login-page">
-    <div class="login-card">
-      <h1> 🖌️ 피카-솔브 로그인</h1>
-      <p> 💻 2025년 SB3기만 입장할 수 있습니다.</p>
-      <p> 📝이름과 비밀번호를 입력해 주세요.  ※별명은 안돼요~🤷</p>
-      <form method="post" action="/login" class="form">
-        <input id="name" name="name" class="input" placeholder="이름" required autofocus>
-        <input id="password" name="password" class="input" type="password" placeholder="비밀번호" required>
-        <button type="submit" class="btn">입장하기</button>
-      </form>
+<body class="auth login">
+  <div class="auth-shell">
+    <div class="auth-card auth-card--split">
+      <div class="auth-illustration">
+        <img src="/img/img_main.png" alt="PicasSolve 메인 일러스트" class="auth-illustration__image">
+      </div>
+      <div class="auth-panel">
+        <div class="auth-header">
+          <h1>🖌️ 피카-솔브 로그인</h1>
+          <p> 💻 등록된 이름과 비밀번호로 접속하세요.</p>
+        </div>
 
-      <p class="err" th:if="${errorMessage}" th:text="${errorMessage}"></p>
-      <p class="msg" th:if="${registeredMessage}" th:text="${registeredMessage}"></p>
-      <p class="msg" th:if="${logoutMessage}" th:text="${logoutMessage}"></p>
-      <p class="link"><a href="/register">아직 계정이 없다면 회원가입</a></p>
+        <div class="alert alert-error" th:if="${errorMessage}">
+          <span class="alert-icon">!</span>
+          <span th:text="${errorMessage}"></span>
+        </div>
+        <div class="alert alert-success" th:if="${registeredMessage}">
+          <span class="alert-icon">✓</span>
+          <span th:text="${registeredMessage}"></span>
+        </div>
+        <div class="alert alert-info" th:if="${logoutMessage}">
+          <span class="alert-icon">i</span>
+          <span th:text="${logoutMessage}"></span>
+        </div>
+
+        <form method="post" action="/login" class="form">
+          <input id="name" name="name" class="input" placeholder="이름" required autofocus>
+          <input id="password" name="password" class="input" type="password" placeholder="비밀번호" required>
+          <button type="submit" class="btn btn-primary">게임 입장</button>
+        </form>
+
+        <p class="link" align="center">아직 계정이 없다면 <a href="/register">회원가입</a></p>
+      </div>
     </div>
   </div>
 </body>

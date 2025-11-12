@@ -29,6 +29,7 @@ public class SecurityConfig {
                     "/register",
                     "/static/**",
                     "/css/**",
+                    "/img/**",
                     "/js/**",
                     "/images/**",
                     "/webjars/**"
