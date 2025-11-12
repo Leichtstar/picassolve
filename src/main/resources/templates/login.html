@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
-  <title>PicasSolve</title>
+  <title>PicasSolve 로그인</title>
   <link rel="stylesheet" href="/login.css">
 </head>
 <body>
@@ -10,14 +10,17 @@
     <div class="login-card">
       <h1> 🖌️ 피카-솔브 로그인</h1>
       <p> 💻 2025년 SB3기만 입장할 수 있습니다.</p>
-      <p> 📝이름을 입력해 주세요.  ※별명은 안돼요~🤷</p>
+      <p> 📝이름과 비밀번호를 입력해 주세요.  ※별명은 안돼요~🤷</p>
       <form method="post" action="/login" class="form">
-<!--        <label for="name" class="label">이름</label>-->
-        <input id="name" name="name" class="input" placeholder="예) 송언석" required>
-
+        <input id="name" name="name" class="input" placeholder="이름" required autofocus>
+        <input id="password" name="password" class="input" type="password" placeholder="비밀번호" required>
         <button type="submit" class="btn">입장하기</button>
       </form>
-      <p class="err">[[${error}]]</p>
+
+      <p class="err" th:if="${errorMessage}" th:text="${errorMessage}"></p>
+      <p class="msg" th:if="${registeredMessage}" th:text="${registeredMessage}"></p>
+      <p class="msg" th:if="${logoutMessage}" th:text="${logoutMessage}"></p>
+      <p class="link"><a href="/register">아직 계정이 없다면 회원가입</a></p>
     </div>
   </div>
 </body>

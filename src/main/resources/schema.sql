@@ -1,18 +1,19 @@
--- 필요시 기존 테이블 제거
-DROP TABLE IF EXISTS users CASCADE;
-DROP TABLE IF EXISTS words CASCADE;
+-- reset tables
+-- DROP TABLE IF EXISTS users CASCADE;
+-- DROP TABLE IF EXISTS words CASCADE;
 
--- users 테이블
-CREATE TABLE users (
-    id    BIGSERIAL PRIMARY KEY,
+-- users table
+CREATE TABLE IF NOT EXISTS users (
+    id    UUID PRIMARY KEY,
     name  VARCHAR(50)  NOT NULL UNIQUE,
-    team INTEGER NOT NULL,
+    password VARCHAR(100) NOT NULL,
+    team  INTEGER      NOT NULL DEFAULT 0,
     score INTEGER      NOT NULL DEFAULT 0,
     role  VARCHAR(16)  NOT NULL CHECK (role IN ('PARTICIPANT','DRAWER','ADMIN'))
 );
 
--- words 테이블
-CREATE TABLE words (
+-- words table
+CREATE TABLE IF NOT EXISTS words (
     id   BIGSERIAL PRIMARY KEY,
     text VARCHAR(100) NOT NULL UNIQUE
 );

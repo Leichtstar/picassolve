@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>PicasSolve 회원가입</title>
+  <link rel="stylesheet" href="/login.css">
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-card">
+      <h1>회원가입</h1>
+      <p>게임에 참여할 이름, 비밀번호, 팀 번호를 입력하세요.</p>
+
+      <form method="post" action="/register" class="form">
+        <input id="name" name="name" class="input" placeholder="이름"
+               th:value="${prefillName}" required autofocus>
+        <input id="password" name="password" class="input" type="password" placeholder="비밀번호" required>
+        <input id="team" name="team" class="input" type="number" min="0" placeholder="팀 번호"
+               th:value="${prefillTeam == null ? 0 : prefillTeam}" required>
+        <button type="submit" class="btn">가입 완료</button>
+      </form>
+
+      <p class="err" th:if="${errorMessage}" th:text="${errorMessage}"></p>
+      <p class="link"><a href="/login">이미 계정이 있다면 로그인</a></p>
+    </div>
+  </div>
+</body>
+</html>
