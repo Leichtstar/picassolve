@@ -20,7 +20,9 @@
 
   const actions = [];           // 로컬 실행취소 히스토리 (서버가 /topic/undo를 보낼 때 사용)
   let currentAction = null;
-  const MAX_ACTIONS = 1200;     // 안전상한(원하면 조절)
+  const MAX_ACTIONS = 1200;     // 최대 유지 액션 수(필요 시 조절)
+  const MAX_SEGMENTS = 40000;   // 전체 세그먼트 상한
+  let totalLocalSegments = 0;
   // ================== 상태 ==================
   let isDrawer = false;
   let isAdmin  = false;
@@ -97,6 +99,23 @@
   }
 // 0.5초마다 UI 상태 갱신
   setInterval(refreshMeDrawBtn, 250);
+
+  function resetLocalHistory() {
+    actions.length = 0;
+    currentAction = null;
+    totalLocalSegments = 0;
+  }
+
+  function trimLocalHistory() {
+    while (actions.length > MAX_ACTIONS || totalLocalSegments > MAX_SEGMENTS) {
+      const dropped = actions.shift();
+      if (dropped) {
+        totalLocalSegments -= dropped.segs.length;
+        if (totalLocalSegments < 0) totalLocalSegments = 0;
+      }
+    }
+    if (actions.length === 0) currentAction = null;
+  }
 
   // ================== 라벨/역할 UI ==================
   function updateRoleLabel() {
@@ -205,9 +224,10 @@
       if (e.newStroke || !currentAction || currentAction.id !== e.actionId) {
         currentAction = { id: e.actionId, segs: [] };
         actions.push(currentAction);
-        if (actions.length > MAX_ACTIONS) actions.shift();  // 메모리 폭주 방지
       }
       currentAction.segs.push(e);
+      totalLocalSegments++;
+      trimLocalHistory();
 
       // 공용 그리기
       drawSegment(e);
@@ -224,9 +244,7 @@
     // 개인 큐: 스냅샷용 캔버스 클리어 (내 화면만)
     stomp.subscribe('/user/queue/canvas/clear', () => {
       ctx.clearRect(0,0,canvas.width,canvas.height);
-      // 로컬 히스토리도 초기화 (스냅샷 세그먼트로 다시 채워짐)
-      actions.length = 0;
-      currentAction  = null;
+      resetLocalHistory();
     });
 
     // 개인 큐: 스냅샷용 드로잉 (과거 선들 순차 재생)
@@ -237,9 +255,10 @@
       if (e.newStroke || !currentAction || currentAction.id !== e.actionId) {
         currentAction = { id: e.actionId, segs: [] };
         actions.push(currentAction);
-        if (actions.length > MAX_ACTIONS) actions.shift();
       }
       currentAction.segs.push(e);
+      totalLocalSegments++;
+      trimLocalHistory();
 
       drawSegment(e); // 즉시 화면에 그리기
     });
@@ -283,13 +302,22 @@
     // ✅ 서버가 undo "명령"만 보낼 때를 지원 (/topic/undo)
     stomp.subscribe('/topic/undo', msg => {
       const { actionId } = JSON.parse(msg.body) || {};
-      // 마지막 일치 항목 제거
+      let removed = false;
+      let removedCount = 0;
       for (let i = actions.length - 1; i >= 0; i--) {
-        if (actions[i].id === actionId) { actions.splice(i, 1); break; }
+        if (actions[i].id === actionId) {
+          const [removedAction] = actions.splice(i, 1);
+          removedCount = removedAction ? removedAction.segs.length : 0;
+          removed = true;
+          break;
+        }
       }
-      // 전체 다시 그리기
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      for (const a of actions) for (const s of a.segs) drawSegment(s);
+      if (removed) {
+        totalLocalSegments = Math.max(0, totalLocalSegments - removedCount);
+        currentAction = actions.length ? actions[actions.length - 1] : null;
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        for (const a of actions) for (const s of a.segs) drawSegment(s);
+      }
     });
 
 // ✅ clear는 단 1회 구독 (서버가 clear→재생 방식일 때도 OK)
@@ -297,8 +325,7 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // 로컬 히스토리도 초기화 (서버가 곧 재생을 보내면 자연스럽게 다시 채워짐)
-      actions.length = 0;
-      currentAction  = null;
+      resetLocalHistory();
 
       // 도구/라벨 상태 초기화(기존 로직 유지)
       drawMode = 'pen';

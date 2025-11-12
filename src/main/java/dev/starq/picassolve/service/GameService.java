@@ -252,6 +252,7 @@ public class GameService {
     /** 스트로크 = DrawEvent 묶음(드래그 1회). */
     static class StrokeAction {
         final String id;
+        final long createdAtMs = System.currentTimeMillis();
         final List<DrawEvent> segments = new ArrayList<>();
         StrokeAction(String id) { this.id = id; }
     }
@@ -260,8 +261,9 @@ public class GameService {
     private final List<StrokeAction> strokeActions = new ArrayList<>();
 
     /** 메모리 보호용 상한. */
-    private static final int MAX_ACTIONS = 1_200;       // 최대 액션(드래그) 수
-    private static final int MAX_TOTAL_SEGMENTS = 40_000; // 전체 세그먼트 수
+    private static final int MAX_ACTIONS = 1_200;          // 최대 액션(드래그) 수
+    private static final int MAX_TOTAL_SEGMENTS = 40_000;  // 전체 세그먼트 수
+    private static final long MAX_ACTION_AGE_MS = 10 * 60_000L; // 10분 이상된 드로잉은 폐기
 
     /** 현재까지 누적된 세그먼트 수. */
     private int totalSegments = 0;
@@ -308,10 +310,7 @@ public class GameService {
             }
 
             // 상한 초과 시 앞에서 제거
-            while (strokeActions.size() > MAX_ACTIONS || totalSegments > MAX_TOTAL_SEGMENTS) {
-                StrokeAction old = strokeActions.remove(0);
-                totalSegments -= old.segments.size();
-            }
+            trimStrokeHistoryLocked();
         }
 
         // 실시간 방송
@@ -355,6 +354,20 @@ public class GameService {
                 }
             }
         }
+    }
+
+    private void trimStrokeHistoryLocked() {
+        long now = System.currentTimeMillis();
+        while (!strokeActions.isEmpty()) {
+            StrokeAction oldest = strokeActions.get(0);
+            boolean overCount = strokeActions.size() > MAX_ACTIONS;
+            boolean overSegments = totalSegments > MAX_TOTAL_SEGMENTS;
+            boolean tooOld = now - oldest.createdAtMs > MAX_ACTION_AGE_MS;
+            if (!overCount && !overSegments && !tooOld) break;
+            strokeActions.remove(0);
+            totalSegments -= oldest.segments.size();
+        }
+        if (totalSegments < 0) totalSegments = 0;
     }
 
     /* --------------------------------- 유틸/헬퍼 --------------------------------- */
