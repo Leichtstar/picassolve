@@ -78,6 +78,46 @@ header > .header-inner > .right-wrap{
 .btn-logout:hover{ background:#f8fafc; }
 .btn-logout:active{ transform: translateY(1px); }
 
+/* 계정 드롭다운 */
+.account-dropdown{
+  position: relative;
+}
+.account-btn{
+  height:32px; padding:0 12px;
+  border:1px solid var(--border);
+  border-radius:8px; background:#fff;
+  color: #514237; font-weight:600; cursor:pointer;
+}
+.account-btn:hover{ background:#f8fafc; }
+.account-menu{
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 150px;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:10px;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.08);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 20;
+}
+.account-menu a{
+  display:block;
+  padding:10px 12px;
+  color:#372d1f;
+  text-decoration:none;
+  font-size:14px;
+}
+.account-menu a:hover{
+  background:#f8fafc;
+}
+.account-dropdown:hover .account-menu,
+.account-dropdown:focus-within .account-menu{
+  display:flex;
+}
+
 /* 시계 */
 .clock{
   min-width:88px; text-align:right;

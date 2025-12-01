@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
@@ -9,13 +9,18 @@
 </head>
 <body>
 <header>
-  <div class="header-inner">
-    <div class="left">
-      <strong th:text="'😉 안녕하세요, ' + ${name} + '님'">안녕하세요</strong>
-      <!-- ⬇ 링크 대신 버튼형 -->
-      <button type="button" class="btn-logout" onclick="location.href='/logout'">로그아웃</button>
-      <div id="clock" class="clock">--:--:--</div>
-    </div>
+    <div class="header-inner">
+      <div class="left">
+        <strong th:text="'안녕하세요, ' + ${name} + '님'">안녕하세요</strong>
+        <div class="account-dropdown">
+          <button type="button" class="account-btn">내 계정 ▾</button>
+          <div class="account-menu">
+            <a href="/account/password">비밀번호 변경</a>
+            <a href="/logout">로그아웃</a>
+          </div>
+        </div>
+        <div id="clock" class="clock">--:--:--</div>
+      </div>
 
     <div class="center">
       <span id="adminWord" class="secret" style="display:none">제시어 : </span>
