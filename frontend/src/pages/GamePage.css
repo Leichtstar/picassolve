@@ -1,0 +1,377 @@
+/* src/pages/GamePage.css - Ported from legacy game.css */
+
+:root {
+    --bg: #fffcf7;
+    --panel: #ffffff;
+    --border: #e5e7eb;
+    --muted: #6b7280;
+    --brand: #925528;
+    --shadow: 0 12px 28px rgba(0, 0, 0, 0.06);
+    --radius-lg: 16px;
+    --radius-md: 10px;
+    --gap: 16px;
+
+    --board-w: 770px;
+    /* Visual Canvas Width */
+    --page-max: 1200px;
+    /* Center Container Max Width */
+}
+
+/* Base resets handled in base.css or localized here */
+
+.game-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: linear-gradient(180deg, var(--bg) 0%, #eef3ff 100%);
+    color: #372d1f;
+}
+
+/* =========================
+   Header
+========================= */
+.game-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    /* Flex behavior handled in component structure, but let's align with legacy */
+    display: flex;
+    align-items: center;
+    padding: 10px 14px;
+    max-width: var(--page-max);
+    margin: 0 auto;
+    width: 100%;
+    gap: 12px;
+}
+
+.game-header .left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+.game-header .center {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+    font-weight: 700;
+}
+
+.game-header .right-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    white-space: nowrap;
+}
+
+/* Account Dropdown */
+.account-dropdown {
+    position: relative;
+}
+
+.account-btn {
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    color: #514237;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.account-btn:hover {
+    background: #f8fafc;
+}
+
+.account-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 150px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 20;
+}
+
+.account-dropdown:hover .account-menu,
+.account-dropdown:focus-within .account-menu {
+    display: flex;
+}
+
+.account-menu a {
+    display: block;
+    padding: 10px 12px;
+    color: #372d1f;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.account-menu a:hover {
+    background: #f8fafc;
+}
+
+/* Clock */
+.clock {
+    min-width: 88px;
+    text-align: right;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #111827;
+}
+
+/* =========================
+   Layout
+========================= */
+.game-main {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-width: var(--page-max);
+    margin: 0 auto;
+    width: 100%;
+    display: flex;
+    gap: var(--gap);
+    padding: 10px;
+}
+
+.game-main>.left {
+    flex: 1;
+    min-width: var(--board-w);
+}
+
+.board-stack {
+    width: var(--board-w);
+}
+
+.game-main>.right {
+    width: 400px;
+    /* Legacy height was fixed, but let's allow flex content */
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 10px;
+}
+
+/* =========================
+   Canvas & Tools
+========================= */
+canvas.game-canvas {
+    width: 770px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    border-radius: var(--radius-lg);
+    touch-action: none;
+    box-shadow: var(--shadow);
+    cursor: crosshair;
+}
+
+.tools {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    padding: 8px 10px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.04);
+}
+
+.tools input[type="color"] {
+    width: 38px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    background: transparent;
+}
+
+.tools input[type="range"] {
+    width: 200px;
+}
+
+.tools button {
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+}
+
+.tools button:hover {
+    background: #f8fafc;
+}
+
+.tools button.active {
+    border-color: #5b7cff;
+    box-shadow: 0 0 0 2px rgba(255, 178, 91, 0.15);
+}
+
+/* =========================
+   Panels
+========================= */
+.panel {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 10px;
+    min-height: 0;
+    background: var(--panel);
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+.panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 1;
+}
+
+.panel h3 {
+    margin: 2px 0 6px;
+    font-size: 16px;
+}
+
+.panel select {
+    height: 30px;
+    padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    font-size: 13px;
+}
+
+/* Specific Panel Sizes (Legacy Adaptation) */
+.chat-panel {
+    width: 400px;
+    height: 477.5px;
+}
+
+.users-panel {
+    width: 164px;
+    height: 175px;
+}
+
+.ranking-panel {
+    width: 224px;
+    height: 175px;
+}
+
+/* =========================
+   Chat
+========================= */
+.chatlog {
+    flex: 1 1 auto;
+    overflow: auto;
+    height: auto;
+    background: #fafafa;
+    border: 1px solid #eee;
+    border-radius: var(--radius-md);
+    padding: 8px;
+    margin-bottom: 8px;
+}
+
+.chatlog .sys {
+    color: var(--muted);
+    font-style: italic;
+}
+
+.chatbox {
+    display: flex;
+    gap: 8px;
+}
+
+.chatbox input {
+    flex: 1;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid #d1d5db;
+    border-radius: var(--radius-md);
+    font: inherit;
+    outline: none;
+}
+
+.chatbox input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(91, 124, 255, 0.15);
+}
+
+.chatbox button {
+    height: 40px;
+    padding: 0 14px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--brand);
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.chatbox button:hover {
+    filter: brightness(0.97);
+}
+
+/* =========================
+   Lists
+========================= */
+.users {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+    flex: 1 1 auto;
+    overflow: auto;
+    padding: 0 8px 8px 8px;
+}
+
+.ranking {
+    flex: 1 1 auto;
+    overflow: auto;
+    margin: 0;
+    padding: 0 8px 8px 8px;
+    list-style: decimal;
+    list-style-position: inside;
+}
+
+.muted {
+    color: var(--muted);
+}
+
+/* =========================
+   Responsive
+========================= */
+@media (max-width: 1024px) {
+    .game-main {
+        flex-direction: column;
+    }
+
+    .game-main>.right {
+        width: 100%;
+        height: auto;
+    }
+
+    .chat-panel,
+    .users-panel,
+    .ranking-panel {
+        width: 100%;
+        height: auto;
+        min-height: 200px;
+    }
+}

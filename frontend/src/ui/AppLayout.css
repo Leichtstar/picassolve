@@ -1,0 +1,54 @@
+.app-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.topbar {
+    height: 60px;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.brand {
+    font-weight: 900;
+    font-size: 20px;
+    color: var(--brand);
+    letter-spacing: -0.5px;
+}
+
+.topbar nav {
+    display: flex;
+    gap: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #4b5563;
+}
+
+.topbar nav a {
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.topbar nav a:hover {
+    color: #111827;
+}
+
+main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+}
+
+main.no-padding {
+    padding: 0;
+}

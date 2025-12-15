@@ -1,0 +1,200 @@
+import React, { useRef, useState, useEffect, useImperativeHandle, forwardRef } from 'react';
+
+const GameCanvas = forwardRef(({ isDrawer, onDrawStroke, onClear, onUndo }, ref) => {
+    const canvasRef = useRef(null);
+    const [color, setColor] = useState('#000000');
+    const [width, setWidth] = useState(3);
+    const [mode, setMode] = useState('pen'); // 'pen' | 'eraser'
+
+    // History state for Undo/Redraw
+    const history = useRef([]); // Array of { id: actionId, segs: [] }
+    const currentRemoteAction = useRef(null); // { id, segs }
+
+    // Local state for drawing interactions
+    const isDrawing = useRef(false);
+    const prevPos = useRef(null);
+    const currentActionId = useRef(null);
+    const isNewStroke = useRef(false);
+
+    // Expose methods
+    useImperativeHandle(ref, () => ({
+        drawSegment: (data) => {
+            // 1. Update History
+            if (data.newStroke || !currentRemoteAction.current || currentRemoteAction.current.id !== data.actionId) {
+                currentRemoteAction.current = { id: data.actionId, segs: [] };
+                history.current.push(currentRemoteAction.current);
+            }
+            currentRemoteAction.current.segs.push(data);
+
+            // 2. Draw
+            const ctx = canvasRef.current.getContext('2d');
+            drawLine(ctx, data);
+        },
+        clearCanvas: () => {
+            const cvs = canvasRef.current;
+            const ctx = cvs.getContext('2d');
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+            history.current = [];
+            currentRemoteAction.current = null;
+        },
+        handleUndo: (targetActionId) => {
+            // 1. Remove the action from history
+            // If targetActionId is provided, remove that specific one. 
+            // If not (or if logic implies LIFO), remove the last one. 
+            // The backend usually sends the actionId to undo.
+
+            let removed = false;
+            if (targetActionId) {
+                const idx = history.current.findIndex(a => a.id === targetActionId);
+                if (idx !== -1) {
+                    history.current.splice(idx, 1);
+                    removed = true;
+                }
+            } else {
+                // Fallback: remove last
+                if (history.current.length > 0) {
+                    history.current.pop();
+                    removed = true;
+                }
+            }
+
+            if (!removed) return;
+
+            // 2. Clear and Redraw
+            const cvs = canvasRef.current;
+            const ctx = cvs.getContext('2d');
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+            history.current.forEach(action => {
+                action.segs.forEach(seg => drawLine(ctx, seg));
+            });
+
+            // Reset current action pointer if we just removed it
+            currentRemoteAction.current = history.current.length > 0 ? history.current[history.current.length - 1] : null;
+        }
+    }));
+
+    const getPos = (e) => {
+        const cvs = canvasRef.current;
+        const rect = cvs.getBoundingClientRect();
+        let clientX, clientY;
+
+        if (e.changedTouches) {
+            clientX = e.changedTouches[0].clientX;
+            clientY = e.changedTouches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+
+        return {
+            x: clientX - rect.left,
+            y: clientY - rect.top
+        };
+    };
+
+    const drawLine = (ctx, { x1, y1, x2, y2, color, width, mode }) => {
+        ctx.save();
+        if (mode === 'eraser') {
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.strokeStyle = 'rgba(0,0,0,1)';
+        } else {
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.strokeStyle = color;
+        }
+        ctx.lineWidth = width;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.restore();
+    };
+
+    const startDrawing = (e) => {
+        if (!isDrawer) return;
+        if (e.type === 'mousedown' && e.button !== 0) return;
+
+        isDrawing.current = true;
+        prevPos.current = getPos(e);
+        currentActionId.current = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+        isNewStroke.current = true;
+    };
+
+    const stopDrawing = () => {
+        isDrawing.current = false;
+        prevPos.current = null;
+        currentActionId.current = null;
+        isNewStroke.current = false;
+    };
+
+    const draw = (e) => {
+        if (!isDrawing.current || !isDrawer) return;
+        e.preventDefault();
+
+        const currPos = getPos(e);
+
+        const payload = {
+            x1: prevPos.current.x,
+            y1: prevPos.current.y,
+            x2: currPos.x,
+            y2: currPos.y,
+            color: color,
+            width: width,
+            mode: mode,
+            actionId: currentActionId.current,
+            newStroke: isNewStroke.current
+        };
+
+        onDrawStroke(payload);
+
+        prevPos.current = currPos;
+        isNewStroke.current = false;
+    };
+
+    return (
+        <div className="board-stack">
+            <canvas
+                ref={canvasRef}
+                width={770}
+                height={600}
+                className="game-canvas"
+                onMouseDown={startDrawing}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                onMouseMove={draw}
+                onTouchStart={startDrawing}
+                onTouchEnd={stopDrawing}
+                onTouchCancel={stopDrawing}
+                onTouchMove={draw}
+            />
+            <div className="tools">
+                <input
+                    type="color"
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    disabled={!isDrawer}
+                />
+                <input
+                    type="range"
+                    min="1"
+                    max="20"
+                    value={width}
+                    onChange={(e) => setWidth(parseInt(e.target.value))}
+                    disabled={!isDrawer}
+                />
+                <button
+                    className={mode === 'eraser' ? 'active' : ''}
+                    onClick={() => setMode(mode === 'eraser' ? 'pen' : 'eraser')}
+                    disabled={!isDrawer}
+                    title="지우개"
+                >🩹</button>
+                <button onClick={onUndo} disabled={!isDrawer} title="실행취소">↶</button>
+                <button onClick={onClear} disabled={!isDrawer} title="전체 지우기">🗑️</button>
+            </div>
+        </div>
+    );
+});
+
+export default GameCanvas;
