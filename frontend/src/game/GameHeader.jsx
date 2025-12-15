@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Link } from 'react-router-dom';
 
 export default function GameHeader({ roleInfo, users, wordLen, secretWord, actions }) {
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
     const [time, setTime] = useState('');
     const [targetDrawer, setTargetDrawer] = useState('');
     const [canMeDraw, setCanMeDraw] = useState(false); // Throttle logic (simplified)
@@ -39,13 +38,6 @@ export default function GameHeader({ roleInfo, users, wordLen, secretWord, actio
         <header className="game-header">
             <div className="left">
                 <strong>안녕하세요, {user.name}님</strong>
-                <div className="account-dropdown">
-                    <button className="account-btn">내 계정 ▾</button>
-                    <div className="account-menu">
-                        <Link to="/account">내 정보</Link>
-                        <a href="#" onClick={(e) => { e.preventDefault(); logout(); }}>로그아웃</a>
-                    </div>
-                </div>
                 <div className="clock">{time}</div>
             </div>
 

@@ -4,7 +4,7 @@ import './LoginPage.css'; // Share styles
 
 export default function RegisterPage() {
     const nav = useNavigate();
-    const [formData, setFormData] = useState({ name: '', password: '', confirm: '' });
+    const [formData, setFormData] = useState({ name: '', password: '', confirm: '', team: '0' });
     const [error, setError] = useState('');
 
     const handleSubmit = async (e) => {
@@ -17,7 +17,7 @@ export default function RegisterPage() {
             const form = new URLSearchParams();
             form.append('name', formData.name);
             form.append('password', formData.password);
-            form.append('team', '1'); // Default team required by backend
+            form.append('team', formData.team);
 
             const res = await fetch('/register', {
                 method: 'POST',
@@ -38,35 +38,60 @@ export default function RegisterPage() {
     };
 
     return (
-        <div className="login-container">
-            <div className="login-card">
-                <div className="brand-logo">PicasSolve</div>
-                <h2>계정 만들기</h2>
-                <p className="subtitle">새로운 여정을 시작해보세요.</p>
-
-                {error && <div className="alert error">{error}</div>}
-
-                <form onSubmit={handleSubmit}>
-                    <div className="form-group">
-                        <label>이름</label>
-                        <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
-                    </div>
-                    <div className="form-group">
-                        <label>비밀번호</label>
-                        <input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} required />
-                    </div>
-                    <div className="form-group">
-                        <label>비밀번호 확인</label>
-                        <input type="password" value={formData.confirm} onChange={e => setFormData({ ...formData, confirm: e.target.value })} required />
-                    </div>
-                    <button type="submit" className="login-btn">회원가입</button>
-                </form>
-                <div className="login-footer">
-                    이미 계정이 있으신가요? <Link to="/login">로그인</Link>
+        <div className="auth-shell">
+            <div className="auth-card auth-card--stack">
+                <div className="auth-header">
+                    <h1>회원가입</h1>
+                    <p>게임에 참여할 이름과 비밀번호, 팀 번호를 입력하세요.</p>
                 </div>
-            </div>
-            <div className="login-hero">
-                <img src="/img/img_main.png" alt="Picassolve Hero" />
+
+                {error && (
+                    <div className="alert alert-error">
+                        <span className="alert-icon">!</span>
+                        <span>{error}</span>
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="form">
+                    <input
+                        className="input"
+                        placeholder="이름"
+                        value={formData.name}
+                        onChange={e => setFormData({ ...formData, name: e.target.value })}
+                        required
+                        autoFocus
+                    />
+                    <input
+                        className="input"
+                        type="password"
+                        placeholder="비밀번호"
+                        value={formData.password}
+                        onChange={e => setFormData({ ...formData, password: e.target.value })}
+                        required
+                    />
+                    <input
+                        className="input"
+                        type="password"
+                        placeholder="비밀번호 확인"
+                        value={formData.confirm}
+                        onChange={e => setFormData({ ...formData, confirm: e.target.value })}
+                        required
+                    />
+                    <input
+                        className="input"
+                        type="number"
+                        min="0"
+                        placeholder="팀 번호"
+                        value={formData.team || ''}
+                        onChange={e => setFormData({ ...formData, team: e.target.value })}
+                        required
+                    />
+
+                    <div className="actions">
+                        <button type="button" className="btn btn-outline" onClick={() => nav('/login')}>돌아가기</button>
+                        <button type="submit" className="btn btn-primary">회원가입</button>
+                    </div>
+                </form>
             </div>
         </div>
     );

@@ -14,15 +14,15 @@ export const useGameSocket = (user, onDraw) => {
     const clientRef = useRef(null);
 
     useEffect(() => {
-        if (!user) return;
+        if (!user?.name) return;
 
         const socket = new SockJS('http://localhost:8099/ws');
         const client = new Client({
             webSocketFactory: () => socket,
-            debug: (str) => console.log('[STOMP]', str),
+            // debug: (str) => console.log('[STOMP]', str),
             onConnect: () => {
                 setConnected(true);
-                console.log('STOMP Connected');
+                // console.log('STOMP Connected');
 
                 // 1. Subscribe to Broadcasts
                 client.subscribe('/topic/chat', (msg) => {
@@ -96,7 +96,7 @@ export const useGameSocket = (user, onDraw) => {
                 clientRef.current.deactivate();
             }
         };
-    }, [user]);
+    }, [user.name]);
 
     // Helper to parse "Name (ROLE)" string from backend
     const parseUserEntry = (str) => {

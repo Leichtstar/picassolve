@@ -32,46 +32,58 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="login-container">
-            <div className="login-card">
-                <div className="brand-logo">PicasSolve</div>
-                <h2>다시 오신 것을 환영합니다!</h2>
-                <p className="subtitle">게임을 시작하려면 로그인하세요.</p>
+        <div className="auth-shell">
+            <div className="auth-card auth-card--split">
+                <div className="auth-illustration">
+                    <img src="/img/img_main.png" alt="PicasSolve 메인 일러스트" className="auth-illustration__image" />
+                </div>
+                <div className="auth-panel">
+                    <div className="auth-header">
+                        <h1>🖌️ 피카-솔브 로그인</h1>
+                        <p>💻 등록된 이름과 비밀번호로 접속하세요.</p>
+                    </div>
 
-                {msg && <div className="alert success">{msg}</div>}
-                {error && <div className="alert error">{error}</div>}
+                    {msg && (
+                        <div className="alert alert-info">
+                            <span className="alert-icon">i</span>
+                            <span>{msg}</span>
+                        </div>
+                    )}
+                    {error && (
+                        <div className="alert alert-error">
+                            <span className="alert-icon">!</span>
+                            <span>{error}</span>
+                        </div>
+                    )}
 
-                <form onSubmit={handleSubmit}>
-                    <div className="form-group">
-                        <label htmlFor="username">아이디</label>
+                    <form onSubmit={handleSubmit} className="form">
                         <input
-                            type="text"
                             id="username"
+                            name="name"
+                            className="input"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                            placeholder="아이디를 입력하세요"
+                            placeholder="이름"
                             required
+                            autoFocus
                         />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="password">비밀번호</label>
                         <input
-                            type="password"
                             id="password"
+                            name="password"
+                            className="input"
+                            type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            placeholder="비밀번호를 입력하세요"
+                            placeholder="비밀번호"
                             required
                         />
-                    </div>
-                    <button type="submit" className="login-btn">게임 입장</button>
-                </form>
-                <div className="login-footer">
-                    계정이 없으신가요? <Link to="/register">회원가입</Link>
+                        <button type="submit" className="btn btn-primary">게임 입장</button>
+                    </form>
+
+                    <p className="link">
+                        아직 계정이 없다면 <Link to="/register">회원가입</Link>
+                    </p>
                 </div>
-            </div>
-            <div className="login-hero">
-                <img src="/img/img_main.png" alt="Picassolve Hero" />
             </div>
         </div>
     );

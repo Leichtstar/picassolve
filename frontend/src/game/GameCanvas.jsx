@@ -16,18 +16,41 @@ const GameCanvas = forwardRef(({ isDrawer, onDrawStroke, onClear, onUndo }, ref)
     const currentActionId = useRef(null);
     const isNewStroke = useRef(false);
 
+    // Optimization: Offscreen canvas for baking old history
+    const mergedCanvasRef = useRef(null);
+    const MAX_HISTORY = 10;
+
+    useEffect(() => {
+        // Initialize offscreen canvas
+        if (!mergedCanvasRef.current) {
+            const oc = document.createElement('canvas');
+            oc.width = 770;
+            oc.height = 600;
+            mergedCanvasRef.current = oc;
+        }
+    }, []);
+
     // Expose methods
     useImperativeHandle(ref, () => ({
         drawSegment: (data) => {
+            const ctx = canvasRef.current.getContext('2d');
+
             // 1. Update History
             if (data.newStroke || !currentRemoteAction.current || currentRemoteAction.current.id !== data.actionId) {
+                // Check limit
+                if (history.current.length >= MAX_HISTORY) {
+                    // Bake the oldest action into mergedCanvas
+                    const oldest = history.current.shift();
+                    const mCtx = mergedCanvasRef.current.getContext('2d');
+                    oldest.segs.forEach(s => drawLine(mCtx, s));
+                }
+
                 currentRemoteAction.current = { id: data.actionId, segs: [] };
                 history.current.push(currentRemoteAction.current);
             }
             currentRemoteAction.current.segs.push(data);
 
-            // 2. Draw
-            const ctx = canvasRef.current.getContext('2d');
+            // 2. Draw direct (interactive)
             drawLine(ctx, data);
         },
         clearCanvas: () => {
@@ -36,13 +59,14 @@ const GameCanvas = forwardRef(({ isDrawer, onDrawStroke, onClear, onUndo }, ref)
             ctx.clearRect(0, 0, cvs.width, cvs.height);
             history.current = [];
             currentRemoteAction.current = null;
+
+            // Clear merged canvas too
+            if (mergedCanvasRef.current) {
+                const mCtx = mergedCanvasRef.current.getContext('2d');
+                mCtx.clearRect(0, 0, mergedCanvasRef.current.width, mergedCanvasRef.current.height);
+            }
         },
         handleUndo: (targetActionId) => {
-            // 1. Remove the action from history
-            // If targetActionId is provided, remove that specific one. 
-            // If not (or if logic implies LIFO), remove the last one. 
-            // The backend usually sends the actionId to undo.
-
             let removed = false;
             if (targetActionId) {
                 const idx = history.current.findIndex(a => a.id === targetActionId);
@@ -51,7 +75,6 @@ const GameCanvas = forwardRef(({ isDrawer, onDrawStroke, onClear, onUndo }, ref)
                     removed = true;
                 }
             } else {
-                // Fallback: remove last
                 if (history.current.length > 0) {
                     history.current.pop();
                     removed = true;
@@ -60,16 +83,21 @@ const GameCanvas = forwardRef(({ isDrawer, onDrawStroke, onClear, onUndo }, ref)
 
             if (!removed) return;
 
-            // 2. Clear and Redraw
+            // Redraw: Merged + History
             const cvs = canvasRef.current;
             const ctx = cvs.getContext('2d');
             ctx.clearRect(0, 0, cvs.width, cvs.height);
 
+            // 1. Draw baked background
+            if (mergedCanvasRef.current) {
+                ctx.drawImage(mergedCanvasRef.current, 0, 0);
+            }
+
+            // 2. Draw active history
             history.current.forEach(action => {
                 action.segs.forEach(seg => drawLine(ctx, seg));
             });
 
-            // Reset current action pointer if we just removed it
             currentRemoteAction.current = history.current.length > 0 ? history.current[history.current.length - 1] : null;
         }
     }));
