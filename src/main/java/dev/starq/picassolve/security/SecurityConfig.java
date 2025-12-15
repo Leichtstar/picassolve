@@ -17,41 +17,38 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(
-        HttpSecurity http,
-        AuthenticationSuccessHandler authenticationSuccessHandler,
-        LogoutSuccessHandler logoutSuccessHandler
-    ) throws Exception {
+            HttpSecurity http,
+            AuthenticationSuccessHandler authenticationSuccessHandler,
+            LogoutSuccessHandler logoutSuccessHandler) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(
-                    "/login",
-                    "/register",
-                    "/static/**",
-                    "/css/**",
-                    "/img/**",
-                    "/js/**",
-                    "/images/**",
-                    "/webjars/**"
-                ).permitAll()
-                .anyRequest().authenticated()
-            )
-            .formLogin(form -> form
-                .loginPage("/login")
-                .loginProcessingUrl("/login")
-                .usernameParameter("name")
-                .passwordParameter("password")
-                .successHandler(authenticationSuccessHandler)
-                .failureUrl("/login?error")
-                .permitAll()
-            )
-            .logout(logout -> logout
-                .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
-                .logoutSuccessHandler(logoutSuccessHandler)
-                .invalidateHttpSession(true)
-                .deleteCookies("JSESSIONID")
-                .permitAll()
-            );
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/login",
+                                "/register",
+                                "/static/**",
+                                "/css/**",
+                                "/img/**",
+                                "/js/**",
+                                "/images/**",
+                                "/webjars/**")
+                        .permitAll()
+                        .anyRequest().authenticated())
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .loginProcessingUrl("/login")
+                        .usernameParameter("name")
+                        .passwordParameter("password")
+                        .successHandler(authenticationSuccessHandler)
+                        .failureUrl("/login?error")
+                        .permitAll())
+                .logout(logout -> logout
+                        .logoutRequestMatcher(new AntPathRequestMatcher("/logout", "POST"))
+                        .logoutSuccessHandler(logoutSuccessHandler)
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID")
+                        .clearAuthentication(true)
+                        .permitAll());
         return http.build();
     }
 

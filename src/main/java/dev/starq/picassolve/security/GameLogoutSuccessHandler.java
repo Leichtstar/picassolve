@@ -21,17 +21,28 @@ public class GameLogoutSuccessHandler implements LogoutSuccessHandler {
 
     @Override
     public void onLogoutSuccess(
-        HttpServletRequest request,
-        HttpServletResponse response,
-        Authentication authentication
-    ) throws IOException, ServletException {
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Authentication authentication) throws IOException, ServletException {
         if (authentication != null) {
             gameService.logout(authentication.getName());
         }
         HttpSession session = request.getSession(false);
         if (session != null) {
             sessionRegistry.unbind(session);
+            session.invalidate(); // Ensure session is invalidated
         }
-        response.sendRedirect("/login?logout");
+
+        // Explicitly delete JSESSIONID cookie
+        jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("JSESSIONID", null);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+        cookie.setHttpOnly(true);
+        response.addCookie(cookie);
+
+        // For SPA: Return 200 OK instead of redirect
+        response.setStatus(HttpServletResponse.SC_OK);
+        response.setContentType("application/json");
+        response.getWriter().write("{\"message\":\"Logged out successfully\"}");
     }
 }
