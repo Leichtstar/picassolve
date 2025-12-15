@@ -18,4 +18,8 @@ public interface UserService {
 	UserDto findByName(String name);
 
 	void delete(UUID id);
+
+	UserDto updateProfile(String currentName, String newName, Integer newTeam, String password);
+
+	void deleteUser(String username, String password);
 }
