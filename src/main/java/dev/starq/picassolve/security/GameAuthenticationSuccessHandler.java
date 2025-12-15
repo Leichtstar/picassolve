@@ -22,10 +22,9 @@ public class GameAuthenticationSuccessHandler implements AuthenticationSuccessHa
 
     @Override
     public void onAuthenticationSuccess(
-        HttpServletRequest request,
-        HttpServletResponse response,
-        Authentication authentication
-    ) throws IOException, ServletException {
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Authentication authentication) throws IOException, ServletException {
         String username = authentication.getName();
         HttpSession session = request.getSession(true);
 
@@ -38,6 +37,7 @@ public class GameAuthenticationSuccessHandler implements AuthenticationSuccessHa
 
         session.setAttribute("name", username);
         sessionRegistry.kickAndBind(username, session);
-        response.sendRedirect("/game");
+        // response.sendRedirect("/game"); // Frontend handles navigation
+        response.setStatus(HttpServletResponse.SC_OK);
     }
 }
