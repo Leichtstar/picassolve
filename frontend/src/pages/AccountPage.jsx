@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useAlert } from '../context/AlertContext';
 import { useNavigate } from 'react-router-dom';
 import './LoginPage.css';
 
 export default function AccountPage() {
     const { user, fetchMe, logout, login } = useAuth();
+    const { success: alertSuccess, error: alertError } = useAlert();
     const nav = useNavigate();
 
     // Tab State: 'PROFILE' | 'PASSWORD' | 'DELETE'
@@ -63,12 +65,13 @@ export default function AccountPage() {
                     name: newName,
                     team: newTeam.toString(),
                     password: currentPassword
-                })
+                }),
+                credentials: 'include'
             });
 
             if (res.ok) {
                 // Feature: Popup and Auto Login
-                alert('닉네임을 성공적으로 변경하였습니다');
+                alertSuccess('닉네임을 성공적으로 변경하였습니다');
 
                 // Re-login with new name and CURRENT password
                 const loginSuccess = await login(newName, currentPassword);
@@ -84,7 +87,7 @@ export default function AccountPage() {
 
                 // Specific handling for password mismatch
                 if (errMsg.includes('비밀번호')) {
-                    alert('잘못된 비밀번호입니다');
+                    alertError('잘못된 비밀번호입니다');
                 } else {
                     setError(errMsg);
                 }
@@ -109,14 +112,20 @@ export default function AccountPage() {
             const res = await fetch('/api/password', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ currentPassword, newPassword })
+                body: JSON.stringify({ currentPassword, newPassword }),
+                credentials: 'include'
             });
             if (res.ok) {
-                setMsg('비밀번호가 변경되었습니다.');
+                alertSuccess('비밀번호가 변경되었습니다');
                 resetForm();
             } else {
                 const data = await res.json();
-                setError(data.message || '비밀번호 변경 실패');
+                const errMsg = data.message || '비밀번호 변경 실패';
+                if (errMsg.includes('비밀번호')) {
+                    alertError('잘못된 비밀번호입니다');
+                } else {
+                    setError(errMsg);
+                }
             }
         } catch (err) {
             setError('서버 오류');
@@ -125,9 +134,22 @@ export default function AccountPage() {
         }
     };
 
+    // Delete confirmation state
+    const [deleteConfirmed, setDeleteConfirmed] = React.useState(false);
+
     const handleDelete = async (e) => {
         e.preventDefault();
-        if (!window.confirm('정말 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
+
+        // First click: show warning
+        if (!deleteConfirmed) {
+            alertError('정말 삭제하시려면 버튼을 한 번 더 클릭하세요!');
+            setDeleteConfirmed(true);
+            // Reset after 5 seconds
+            setTimeout(() => setDeleteConfirmed(false), 5000);
+            return;
+        }
+
+        // Second click: proceed with deletion
 
         setLoading(true);
         setError('');
@@ -135,14 +157,20 @@ export default function AccountPage() {
             const res = await fetch('/api/user', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password: currentPassword })
+                body: JSON.stringify({ password: currentPassword }),
+                credentials: 'include'
             });
             if (res.ok) {
-                alert('계정이 삭제되었습니다.');
+                alertSuccess(`${user.name} 계정 삭제에 성공하였습니다.`);
                 await logout();
             } else {
                 const data = await res.json();
-                setError(data.message || '계정 삭제 실패');
+                const errMsg = data.message || '계정 삭제 실패';
+                if (errMsg.includes('비밀번호')) {
+                    alertError('잘못된 비밀번호입니다');
+                } else {
+                    setError(errMsg);
+                }
             }
         } catch (err) {
             setError('서버 오류');
@@ -210,7 +238,9 @@ export default function AccountPage() {
                     <form onSubmit={handleDelete} className="form">
                         <p style={{ color: 'red', fontSize: '14px' }}>⚠️ 계정 삭제 시 모든 데이터가 영구적으로 삭제됩니다.</p>
                         <input className="input" type="password" placeholder="현재 비밀번호를 입력하여 확인" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required />
-                        <button type="submit" className="btn btn-primary" style={{ background: 'red', borderColor: 'red' }} disabled={loading}>계정 영구 삭제</button>
+                        <button type="submit" className="btn btn-primary" style={{ background: deleteConfirmed ? '#8B0000' : 'red', borderColor: deleteConfirmed ? '#8B0000' : 'red' }} disabled={loading}>
+                            {deleteConfirmed ? '⚠️ 확인! 클릭하면 삭제됩니다' : '계정 영구 삭제'}
+                        </button>
                     </form>
                 )}
 

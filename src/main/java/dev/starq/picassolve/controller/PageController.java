@@ -5,8 +5,10 @@ import dev.starq.picassolve.dto.Request.UserCreateRequest;
 import dev.starq.picassolve.dto.UserDto;
 import dev.starq.picassolve.service.UserService;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class PageController {
@@ -162,7 +165,7 @@ public class PageController {
         }
     }
 
-    @org.springframework.web.bind.annotation.DeleteMapping("/api/user")
+    @DeleteMapping("/api/user")
     @ResponseBody
     public ResponseEntity<?> deleteAccount(@RequestBody Map<String, String> payload,
             Authentication authentication,
