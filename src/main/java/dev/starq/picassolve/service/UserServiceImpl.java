@@ -131,4 +131,47 @@ public class UserServiceImpl implements UserService {
 	private String normalize(String value) {
 		return value == null ? "" : value.trim();
 	}
+
+	@Override
+	public UserDto updateProfile(String currentName, String newName, Integer newTeam, String password) {
+		User user = userRepository.findByName(normalize(currentName))
+				.orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+		if (!passwordEncoder.matches(normalize(password), user.getPassword())) {
+			throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+		}
+
+		// Update Name
+		String normalizedNewName = normalize(newName);
+		if (!normalizedNewName.isBlank() && !normalizedNewName.equals(user.getName())) {
+			if (userRepository.existsByName(normalizedNewName)) {
+				throw new IllegalArgumentException("이미 존재하는 이름입니다.");
+			}
+			user.setName(normalizedNewName);
+		} else if (normalizedNewName.isBlank()) {
+			throw new IllegalArgumentException("이름을 입력하세요.");
+		}
+
+		// Update Team
+		if (newTeam != null) {
+			if (newTeam < 0) {
+				throw new IllegalArgumentException("팀 번호는 0 이상이어야 합니다.");
+			}
+			user.setTeam(newTeam);
+		}
+
+		return userMapper.toDto(userRepository.save(user));
+	}
+
+	@Override
+	public void deleteUser(String username, String password) {
+		User user = userRepository.findByName(normalize(username))
+				.orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+		if (!passwordEncoder.matches(normalize(password), user.getPassword())) {
+			throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+		}
+
+		userRepository.delete(user);
+	}
 }

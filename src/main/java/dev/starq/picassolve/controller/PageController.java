@@ -1,7 +1,7 @@
 package dev.starq.picassolve.controller;
 
 import dev.starq.picassolve.dto.Request.UserCreateRequest;
-import dev.starq.picassolve.dto.Request.UserUpdateRequest;
+
 import dev.starq.picassolve.dto.UserDto;
 import dev.starq.picassolve.service.UserService;
 import java.util.Map;
@@ -136,23 +136,48 @@ public class PageController {
 
     @PutMapping("/api/user")
     @ResponseBody
-    public ResponseEntity<UserDto> updateProfile(@RequestBody UserUpdateRequest request,
+    public ResponseEntity<?> updateProfile(@RequestBody Map<String, String> payload,
             Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        UserDto currentUser = userService.findByName(authentication.getName());
-        if (currentUser == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        String currentName = authentication.getName();
+        String newName = payload.get("name");
+        String password = payload.get("password");
+
+        Integer team = null;
+        if (payload.containsKey("team")) {
+            try {
+                team = Integer.parseInt(payload.get("team"));
+            } catch (NumberFormatException e) {
+                return ResponseEntity.badRequest().body(Map.of("message", "유효하지 않은 팀 번호입니다."));
+            }
         }
-        // Only update name
-        UserUpdateRequest safeRequest = new UserUpdateRequest(request.name(), null);
 
         try {
-            UserDto updated = userService.update(currentUser.id(), safeRequest);
+            UserDto updated = userService.updateProfile(currentName, newName, team, password);
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/api/user")
+    @ResponseBody
+    public ResponseEntity<?> deleteAccount(@RequestBody Map<String, String> payload,
+            Authentication authentication,
+            jakarta.servlet.http.HttpServletRequest request) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String password = payload.get("password");
+
+        try {
+            userService.deleteUser(authentication.getName(), password);
+            request.getSession().invalidate(); // Logout
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 
