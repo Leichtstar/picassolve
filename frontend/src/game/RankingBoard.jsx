@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { backendFetch } from '../lib/backend';
 
 export default function RankingBoard({ liveRanking }) {
     const [period, setPeriod] = useState('LIVE');
@@ -9,7 +10,7 @@ export default function RankingBoard({ liveRanking }) {
         if (period === 'LIVE') return;
 
         setLoading(true);
-        fetch(`/api/rankings?period=${period}`)
+        backendFetch(`/api/rankings?period=${period}`, { credentials: 'include' })
             .then(res => {
                 if (!res.ok) throw new Error('Failed');
                 return res.json();

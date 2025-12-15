@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { backendFetch } from '../lib/backend';
 import './LoginPage.css'; // Share styles
 
 export default function RegisterPage() {
@@ -19,10 +20,11 @@ export default function RegisterPage() {
             form.append('password', formData.password);
             form.append('team', formData.team);
 
-            const res = await fetch('/register', {
+            const res = await backendFetch('/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: form
+                body: form.toString(),
+                credentials: 'include'
             });
 
             // Backend redirects to /login on success
@@ -32,7 +34,7 @@ export default function RegisterPage() {
                 // If it returns the register page HTML (200 OK), it means failure
                 setError('회원가입 실패 (이미 존재하는 이름일 수 있습니다).');
             }
-        } catch (err) {
+        } catch {
             setError('서버 오류가 발생했습니다.');
         }
     };

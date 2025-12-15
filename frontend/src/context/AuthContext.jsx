@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { backendFetch } from '../lib/backend';
 
 const AuthContext = createContext(null);
 
@@ -10,7 +11,7 @@ export const AuthProvider = ({ children }) => {
 
     const fetchMe = async () => {
         try {
-            const res = await fetch('/api/me', { credentials: 'include' });
+            const res = await backendFetch('/api/me', { credentials: 'include' });
             if (res.ok) {
                 const data = await res.json();
                 setUser(data);
@@ -34,7 +35,7 @@ export const AuthProvider = ({ children }) => {
         form.append('name', username);
         form.append('password', password);
 
-        const res = await fetch('/login', {
+        const res = await backendFetch('/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: form.toString(),
@@ -51,7 +52,7 @@ export const AuthProvider = ({ children }) => {
 
     const logout = async () => {
         try {
-            await fetch('/logout', { method: 'POST', credentials: 'include' });
+            await backendFetch('/logout', { method: 'POST', credentials: 'include' });
 
             // Clear JSESSIONID cookie from frontend
             document.cookie = 'JSESSIONID=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';

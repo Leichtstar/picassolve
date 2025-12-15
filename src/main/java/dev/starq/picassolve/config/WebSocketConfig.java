@@ -1,5 +1,8 @@
 package dev.starq.picassolve.config;
 
+import java.util.Arrays;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -11,6 +14,15 @@ import org.springframework.web.socket.server.support.HttpSessionHandshakeInterce
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    private final String[] allowedOriginPatterns;
+
+    public WebSocketConfig(@Value("${APP_ALLOWED_ORIGINS:*}") String allowedOrigins) {
+        this.allowedOriginPatterns = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toArray(String[]::new);
+    }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
@@ -24,7 +36,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.addEndpoint("/ws")
                 .addInterceptors(new HttpSessionHandshakeInterceptor()) // HTTP 세션 속성 전달(name)
                 .setHandshakeHandler(new CustomHandshakeHandler())      // 세션 name을 Principal로 설정
-                .setAllowedOriginPatterns("*")
+                .setAllowedOriginPatterns(allowedOriginPatterns)
                 .withSockJS();
     }
 

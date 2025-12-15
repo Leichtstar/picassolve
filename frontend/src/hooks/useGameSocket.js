@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
+import { backendUrl } from '../lib/backend';
 
 export const useGameSocket = (user, onDraw) => {
     const [connected, setConnected] = useState(false);
@@ -42,7 +43,7 @@ export const useGameSocket = (user, onDraw) => {
     useEffect(() => {
         if (!user?.name) return;
 
-        const socket = new SockJS('http://localhost:8099/ws');
+        const socket = new SockJS(backendUrl('/ws'));
         const client = new Client({
             webSocketFactory: () => socket,
             // debug: (str) => console.log('[STOMP]', str),

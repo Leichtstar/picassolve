@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { useNavigate } from 'react-router-dom';
+import { backendFetch } from '../lib/backend';
 import './LoginPage.css';
 
 export default function AccountPage() {
@@ -65,7 +66,7 @@ export default function AccountPage() {
         setMsg('');
 
         try {
-            const res = await fetch('/api/user', {
+            const res = await backendFetch('/api/user', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -116,7 +117,7 @@ export default function AccountPage() {
         setMsg('');
 
         try {
-            const res = await fetch('/api/password', {
+            const res = await backendFetch('/api/password', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ currentPassword, newPassword }),
@@ -161,7 +162,7 @@ export default function AccountPage() {
         setLoading(true);
         setError('');
         try {
-            const res = await fetch('/api/user', {
+            const res = await backendFetch('/api/user', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ password: currentPassword }),

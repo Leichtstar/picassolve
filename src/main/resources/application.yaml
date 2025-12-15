@@ -22,7 +22,7 @@ spring:
       initialize-schema: always
 
 server:
-  port: 8099
+  port: ${SERVER_PORT:8099}
 
 logging:
   level:
