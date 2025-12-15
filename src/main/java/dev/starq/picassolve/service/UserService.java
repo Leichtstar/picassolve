@@ -8,7 +8,14 @@ import java.util.UUID;
 
 public interface UserService {
 	UserDto create(UserCreateRequest request);
+
 	UserDto update(UUID id, UserUpdateRequest request);
+
+	void changePassword(String username, String currentPassword, String newPassword);
+
 	List<UserDto> findAll();
+
+	UserDto findByName(String name);
+
 	void delete(UUID id);
 }

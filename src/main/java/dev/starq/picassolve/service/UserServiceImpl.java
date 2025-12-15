@@ -43,10 +43,10 @@ public class UserServiceImpl implements UserService {
 		}
 
 		User createdUser = User.builder()
-			.name(name)
-			.password(passwordEncoder.encode(rawPassword))
-			.team(team)
-			.build();
+				.name(name)
+				.password(passwordEncoder.encode(rawPassword))
+				.team(team)
+				.build();
 
 		return userMapper.toDto(userRepository.save(createdUser));
 	}
@@ -57,7 +57,7 @@ public class UserServiceImpl implements UserService {
 		Objects.requireNonNull(request, "request must not be null");
 
 		User user = userRepository.findById(id)
-			.orElseThrow(() -> new IllegalArgumentException("user not found: " + id));
+				.orElseThrow(() -> new IllegalArgumentException("user not found: " + id));
 
 		String newName = normalize(request.name());
 		if (!newName.isBlank() && !newName.equals(user.getName())) {
@@ -75,16 +75,54 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
+	public void changePassword(String username, String currentPassword, String newPassword) {
+		String normalizedName = normalize(username);
+		if (normalizedName.isBlank()) {
+			throw new IllegalArgumentException("유효하지 않은 사용자입니다.");
+		}
+		String normalizedCurrent = normalize(currentPassword);
+		String normalizedNew = normalize(newPassword);
+		if (normalizedCurrent.isBlank()) {
+			throw new IllegalArgumentException("현재 비밀번호를 입력하세요.");
+		}
+		if (normalizedNew.isBlank()) {
+			throw new IllegalArgumentException("새 비밀번호를 입력하세요.");
+		}
+		if (normalizedCurrent.equals(normalizedNew)) {
+			throw new IllegalArgumentException("새 비밀번호가 기존 비밀번호와 동일합니다.");
+		}
+
+		User user = userRepository.findByName(normalizedName)
+				.orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+		if (!passwordEncoder.matches(normalizedCurrent, user.getPassword())) {
+			throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+		}
+
+		user.setPassword(passwordEncoder.encode(normalizedNew));
+		userRepository.save(user);
+	}
+
+	@Override
 	@Transactional(readOnly = true)
 	public List<UserDto> findAll() {
 		return userRepository.findAll().stream()
-			.map(userMapper::toDto)
-			.toList();
+				.map(userMapper::toDto)
+				.toList();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public UserDto findByName(String name) {
+		return userRepository.findByName(normalize(name))
+				.map(userMapper::toDto)
+				.orElse(null);
 	}
 
 	@Override
 	public void delete(UUID id) {
-		if (id == null) return;
+		if (id == null)
+			return;
 		if (userRepository.existsById(id)) {
 			userRepository.deleteById(id);
 		}

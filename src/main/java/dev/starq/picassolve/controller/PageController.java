@@ -1,7 +1,15 @@
 package dev.starq.picassolve.controller;
 
 import dev.starq.picassolve.dto.Request.UserCreateRequest;
+import dev.starq.picassolve.dto.Request.UserUpdateRequest;
+import dev.starq.picassolve.dto.UserDto;
 import dev.starq.picassolve.service.UserService;
+import java.util.Map;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseBody;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -21,17 +29,16 @@ public class PageController {
     @GetMapping("/")
     public String root(Authentication authentication) {
         return (authentication == null || !authentication.isAuthenticated())
-            ? "redirect:/login"
-            : "redirect:/game";
+                ? "redirect:/login"
+                : "redirect:/game";
     }
 
     @GetMapping("/login")
     public String loginPage(
-        @RequestParam(value = "error", required = false) String error,
-        @RequestParam(value = "logout", required = false) String logout,
-        @RequestParam(value = "registered", required = false) String registered,
-        Model model
-    ) {
+            @RequestParam(value = "error", required = false) String error,
+            @RequestParam(value = "logout", required = false) String logout,
+            @RequestParam(value = "registered", required = false) String registered,
+            Model model) {
         if ("capacity".equals(error)) {
             model.addAttribute("errorMessage", "동시에 접속할 수 있는 인원을 초과했습니다.");
         } else if (error != null) {
@@ -51,12 +58,11 @@ public class PageController {
 
     @PostMapping("/register")
     public String register(
-        @RequestParam String name,
-        @RequestParam String password,
-        @RequestParam int team,
-        Model model,
-        RedirectAttributes redirectAttributes
-    ) {
+            @RequestParam String name,
+            @RequestParam String password,
+            @RequestParam int team,
+            Model model,
+            RedirectAttributes redirectAttributes) {
         try {
             userService.create(new UserCreateRequest(name, password, team));
         } catch (IllegalArgumentException ex) {
@@ -69,6 +75,41 @@ public class PageController {
         return "redirect:/login";
     }
 
+    @GetMapping("/account/password")
+    public String passwordForm(Model model, Authentication authentication) {
+        model.addAttribute("username", authentication != null ? authentication.getName() : "");
+        return "password";
+    }
+
+    @PostMapping("/account/password")
+    public String changePassword(
+            @RequestParam String currentPassword,
+            @RequestParam String newPassword,
+            @RequestParam String confirmPassword,
+            Authentication authentication,
+            Model model,
+            RedirectAttributes redirectAttributes) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return "redirect:/login";
+        }
+        if (!newPassword.equals(confirmPassword)) {
+            model.addAttribute("username", authentication.getName());
+            model.addAttribute("errorMessage", "새 비밀번호와 확인 비밀번호가 일치하지 않습니다.");
+            return "password";
+        }
+
+        try {
+            userService.changePassword(authentication.getName(), currentPassword, newPassword);
+        } catch (IllegalArgumentException ex) {
+            model.addAttribute("username", authentication.getName());
+            model.addAttribute("errorMessage", ex.getMessage());
+            return "password";
+        }
+
+        redirectAttributes.addFlashAttribute("successMessage", "비밀번호가 변경되었습니다.");
+        return "redirect:/account/password";
+    }
+
     @GetMapping("/game")
     public String game(HttpSession session, Model model) {
         String name = (String) session.getAttribute("name");
@@ -79,4 +120,58 @@ public class PageController {
         model.addAttribute("sid", session.getId());
         return "game";
     }
+
+    @GetMapping("/api/me")
+    @ResponseBody
+    public ResponseEntity<UserDto> me(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        UserDto user = userService.findByName(authentication.getName());
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        return ResponseEntity.ok(user);
+    }
+
+    @PutMapping("/api/user")
+    @ResponseBody
+    public ResponseEntity<UserDto> updateProfile(@RequestBody UserUpdateRequest request,
+            Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        UserDto currentUser = userService.findByName(authentication.getName());
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        // Only update name
+        UserUpdateRequest safeRequest = new UserUpdateRequest(request.name(), null);
+
+        try {
+            UserDto updated = userService.update(currentUser.id(), safeRequest);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PostMapping("/api/password")
+    @ResponseBody
+    public ResponseEntity<?> changePasswordApi(@RequestBody Map<String, String> payload,
+            Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String currentPassword = payload.get("currentPassword");
+        String newPassword = payload.get("newPassword");
+
+        try {
+            userService.changePassword(authentication.getName(), currentPassword, newPassword);
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
 }
