@@ -12,6 +12,32 @@ export const useGameSocket = (user, onDraw) => {
     const [roleInfo, setRoleInfo] = useState({ isDrawer: false, isAdmin: false });
 
     const clientRef = useRef(null);
+    const onDrawRef = useRef(onDraw);
+
+    useEffect(() => {
+        onDrawRef.current = onDraw;
+    }, [onDraw]);
+
+    // Helper to parse "Name (ROLE)" string from backend
+    const parseUserEntry = useCallback((str) => {
+        const m = (str || '').match(/^(.+?)\s+\((ADMIN|DRAWER|PARTICIPANT)\)$/);
+        return m ? { name: m[1], role: m[2] } : { name: str, role: null };
+    }, []);
+
+    // Helper to update users and derived roles
+    const updateUsers = useCallback((rawList) => {
+        // Parse the list of strings into objects
+        const userList = (rawList || []).map(parseUserEntry);
+        setUsers(userList);
+
+        const me = userList.find(u => u.name === user?.name);
+        if (me) {
+            setRoleInfo({
+                isDrawer: (me.role === 'DRAWER'),
+                isAdmin: (me.role === 'ADMIN')
+            });
+        }
+    }, [parseUserEntry, user?.name]);
 
     useEffect(() => {
         if (!user?.name) return;
@@ -44,16 +70,16 @@ export const useGameSocket = (user, onDraw) => {
 
                 client.subscribe('/topic/draw', (msg) => {
                     const drawData = JSON.parse(msg.body);
-                    if (onDraw) onDraw(drawData);
+                    if (onDrawRef.current) onDrawRef.current(drawData);
                 });
 
                 client.subscribe('/topic/canvas/clear', () => {
-                    if (onDraw) onDraw({ type: 'clear' });
+                    if (onDrawRef.current) onDrawRef.current({ type: 'clear' });
                 });
 
                 client.subscribe('/topic/undo', (msg) => {
                     const { actionId } = JSON.parse(msg.body);
-                    if (onDraw) onDraw({ type: 'undo', actionId });
+                    if (onDrawRef.current) onDrawRef.current({ type: 'undo', actionId });
                 });
 
                 // 2. Subscribe to User Queue (Private)
@@ -68,11 +94,11 @@ export const useGameSocket = (user, onDraw) => {
 
                 client.subscribe('/user/queue/draw', (msg) => {
                     // Snapshot replay
-                    if (onDraw) onDraw(JSON.parse(msg.body));
+                    if (onDrawRef.current) onDrawRef.current(JSON.parse(msg.body));
                 });
 
                 client.subscribe('/user/queue/canvas/clear', () => {
-                    if (onDraw) onDraw({ type: 'clear' });
+                    if (onDrawRef.current) onDrawRef.current({ type: 'clear' });
                 });
 
                 client.subscribe('/user/queue/force-logout', (msg) => {
@@ -96,32 +122,11 @@ export const useGameSocket = (user, onDraw) => {
                 clientRef.current.deactivate();
             }
         };
-    }, [user.name]);
-
-    // Helper to parse "Name (ROLE)" string from backend
-    const parseUserEntry = (str) => {
-        const m = (str || '').match(/^(.+?)\s+\((ADMIN|DRAWER|PARTICIPANT)\)$/);
-        return m ? { name: m[1], role: m[2] } : { name: str, role: null };
-    };
-
-    // Helper to update users and derived roles
-    const updateUsers = (rawList) => {
-        // Parse the list of strings into objects
-        const userList = (rawList || []).map(parseUserEntry);
-        setUsers(userList);
-
-        const me = userList.find(u => u.name === user.name);
-        if (me) {
-            setRoleInfo({
-                isDrawer: (me.role === 'DRAWER'),
-                isAdmin: (me.role === 'ADMIN')
-            });
-        }
-    };
+    }, [user?.name, updateUsers]);
 
     // Actions
     const sendChat = (text) => {
-        if (!clientRef.current || !connected) return;
+        if (!clientRef.current || !connected || !user?.name) return;
         clientRef.current.publish({
             destination: '/app/chat.send',
             body: JSON.stringify({ from: user.name, text })

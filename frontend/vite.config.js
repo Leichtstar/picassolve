@@ -54,7 +54,20 @@ export default defineConfig({
           }
         }
       },
+      '/game': {
+        target: 'http://localhost:8099',
+        changeOrigin: false,
+        bypass: (req, res, options) => {
+          if (req.method === 'GET') {
+            return req.url;
+          }
+        }
+      },
       '/img': {
+        target: 'http://localhost:8099',
+        changeOrigin: false,
+      },
+      '/logout': {
         target: 'http://localhost:8099',
         changeOrigin: false,
       }

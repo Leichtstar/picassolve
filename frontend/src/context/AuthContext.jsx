@@ -52,6 +52,10 @@ export const AuthProvider = ({ children }) => {
     const logout = async () => {
         try {
             await fetch('/logout', { method: 'POST', credentials: 'include' });
+
+            // Clear JSESSIONID cookie from frontend
+            document.cookie = 'JSESSIONID=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+
             setUser(null);
             nav('/login?logout');
         } catch (err) {

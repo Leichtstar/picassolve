@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import './LoginPage.css';
 
 export default function AccountPage() {
-    const { user, fetchMe, logout, login } = useAuth();
+    const { user, loading: authLoading, logout, login } = useAuth();
     const { success: alertSuccess, error: alertError } = useAlert();
     const nav = useNavigate();
 
@@ -24,9 +24,15 @@ export default function AccountPage() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    if (!user) return null;
+    // Auth Guard
+    React.useEffect(() => {
+        if (!authLoading && !user) {
+            nav('/login');
+        }
+    }, [user, authLoading, nav]);
 
     const resetForm = () => {
+        if (!user) return;
         setNewName(user.name); // Prefill current name
         setNewTeam(user.team || '0'); // Prefill current team
         setCurrentPassword('');
@@ -38,6 +44,7 @@ export default function AccountPage() {
 
     // Initialize form data when tab changes or user loads
     React.useEffect(() => {
+        if (!user) return;
         if (mode === 'PROFILE') {
             setNewName(user.name);
             setNewTeam(user.team || '0');
@@ -92,7 +99,7 @@ export default function AccountPage() {
                     setError(errMsg);
                 }
             }
-        } catch (err) {
+        } catch {
             setError('서버 오류');
         } finally {
             setLoading(false);
@@ -127,7 +134,7 @@ export default function AccountPage() {
                     setError(errMsg);
                 }
             }
-        } catch (err) {
+        } catch {
             setError('서버 오류');
         } finally {
             setLoading(false);
@@ -172,12 +179,15 @@ export default function AccountPage() {
                     setError(errMsg);
                 }
             }
-        } catch (err) {
+        } catch {
             setError('서버 오류');
         } finally {
             setLoading(false);
         }
     };
+
+    if (authLoading) return <div className="auth-shell">로딩 중...</div>;
+    if (!user) return <div className="auth-shell" />;
 
     return (
         <div className="auth-shell">
