@@ -10,6 +10,8 @@
   const roleLabel = document.getElementById('drawRoleHint');
   const adminWord = document.getElementById('adminWord');       // 관리자 전용 배너
   const adminBox  = document.getElementById('adminControls');   // 관리자 컨트롤 영역
+  const rankingSelect = document.getElementById('rankingPeriod');
+  const rankingList   = document.getElementById('ranking');
 
   const btnEraser = document.getElementById('btnEraser');       // 지우개 토글
   const btnUndo   = document.getElementById('btnUndo');         // 실행취소
@@ -36,6 +38,9 @@
   let drawMode = 'pen';      // 'pen' | 'eraser'
   let currentActionId = null; // 드래그(스트로크) 식별자
   let isNewStroke     = false;// 첫 세그먼트 여부
+
+  let rankingMode = 'LIVE';  // LIVE | DAILY | WEEKLY | MONTHLY
+  let liveRankingCache = []; // 실시간 랭킹 데이터 캐시
 
   let lastLiveDrawAt = 0; // 최근 실시간 드로잉 수신 시각(ms) — /topic/draw 수신 때만 갱신
   // ================== 유틸 함수 ==================
@@ -181,6 +186,42 @@
     updateRoleLabel();
   }
 
+  function renderRanking(list, emptyText = '데이터 없음') {
+    if (!rankingList) return;
+    rankingList.innerHTML = '';
+    const arr = Array.isArray(list) ? list : [];
+    if (arr.length === 0) {
+      const li = document.createElement('li');
+      li.textContent = emptyText;
+      li.style.color = 'var(--muted)';
+      rankingList.appendChild(li);
+      return;
+    }
+    arr.forEach(e => {
+      const li = document.createElement('li');
+      li.textContent = `${e.name}/${e.team} : ${e.score}점`;
+      rankingList.appendChild(li);
+    });
+  }
+
+  async function loadRanking(period) {
+    rankingMode = period;
+    if (period === 'LIVE') {
+      renderRanking(liveRankingCache, liveRankingCache.length ? '데이터 없음' : '실시간 집계 중');
+      return;
+    }
+    renderRanking([], '불러오는 중...');
+    try {
+      const res = await fetch(`/api/rankings?period=${period}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      renderRanking(data);
+    } catch (err) {
+      renderRanking([], '조회 실패');
+      addChat('SYSTEM', `랭킹 조회 실패: ${err.message}`, true);
+    }
+  }
+
   // ================== 채팅 ==================
   function sendChat() {
     const text = inputMsg.value.trim();
@@ -202,13 +243,8 @@
 
     stomp.subscribe('/topic/scoreboard', msg => {
       const arr = JSON.parse(msg.body);
-      const ol  = document.getElementById('ranking');
-      ol.innerHTML = '';
-      arr.forEach(e => {
-        const li = document.createElement('li');
-        li.textContent = `${e.name}/${e.team} : ${e.score}점`;
-        ol.appendChild(li);
-      });
+      liveRankingCache = arr;
+      if (rankingMode === 'LIVE') renderRanking(arr);
     });
 
     stomp.subscribe('/topic/chat', msg => {
@@ -274,13 +310,8 @@
     stomp.subscribe('/user/queue/users',      msg => renderUsersAndRoles(JSON.parse(msg.body)));
     stomp.subscribe('/user/queue/scoreboard', msg => {
       const arr = JSON.parse(msg.body);
-      const ol  = document.getElementById('ranking');
-      ol.innerHTML = '';
-      arr.forEach(e => {
-        const li = document.createElement('li');
-        li.textContent = `${e.name}/${e.team} : ${e.score}점`;
-        ol.appendChild(li);
-      });
+      liveRankingCache = arr;
+      if (rankingMode === 'LIVE') renderRanking(arr);
     });
 
 
@@ -346,6 +377,11 @@
   document.getElementById('send').onclick = sendChat;
   inputMsg.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); sendChat(); }
+  });
+
+  rankingSelect && rankingSelect.addEventListener('change', (e) => {
+    const val = e.target.value;
+    loadRanking(val);
   });
 
   // 관리자: 출제자 지정

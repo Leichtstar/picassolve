@@ -71,7 +71,15 @@
       <ul id="users"></ul>
     </div>
     <div class="panel">
-      <h3>🏆 랭킹</h3>
+      <div class="panel-head">
+        <h3>🏆 랭킹</h3>
+        <select id="rankingPeriod" aria-label="랭킹 기간 선택">
+          <option value="LIVE" selected>실시간</option>
+          <option value="DAILY">일간</option>
+          <option value="WEEKLY">주간</option>
+          <option value="MONTHLY">월간</option>
+        </select>
+      </div>
       <ol id="ranking"></ol>
     </div>
   </section>

@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/picassolve
-    username: postgres
-    password: password
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/picassolve}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -15,6 +15,11 @@ spring:
       mode: never           # ⬅️ schema.sql → data.sql 순으로 실행
   thymeleaf:
     cache: false
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: always
 
 server:
   port: 8099
