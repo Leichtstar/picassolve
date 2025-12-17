@@ -150,11 +150,14 @@
 
 .game-main>.left {
     flex: 1;
-    min-width: var(--board-w);
+    min-width: 0;
+    display: flex;
+    justify-content: center;
 }
 
 .board-stack {
-    width: var(--board-w);
+    width: 100%;
+    max-width: var(--board-w);
 }
 
 .game-main>.right {
@@ -170,7 +173,11 @@
    Canvas & Tools
 ========================= */
 canvas.game-canvas {
-    width: 770px;
+    width: 100%;
+    max-width: var(--board-w);
+    aspect-ratio: 770 / 600;
+    height: auto;
+    display: block;
     border: 1px solid #d1d5db;
     background: #fff;
     border-radius: var(--radius-lg);
@@ -201,6 +208,8 @@ canvas.game-canvas {
 
 .tools input[type="range"] {
     width: 200px;
+    max-width: 100%;
+    flex: 1 1 200px;
 }
 
 .tools button {
@@ -362,6 +371,7 @@ canvas.game-canvas {
 @media (max-width: 1024px) {
     .game-main {
         flex-direction: column;
+        overflow: auto;
     }
 
     .game-main>.right {

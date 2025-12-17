@@ -116,8 +116,8 @@ const GameCanvas = forwardRef(({ isDrawer, onDrawStroke, onClear, onUndo }, ref)
         }
 
         return {
-            x: clientX - rect.left,
-            y: clientY - rect.top
+            x: (clientX - rect.left) * (cvs.width / rect.width),
+            y: (clientY - rect.top) * (cvs.height / rect.height)
         };
     };
 
