@@ -23,6 +23,12 @@ spring:
 
 server:
   port: ${SERVER_PORT:8099}
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        same-site: ${SERVER_SERVLET_SESSION_COOKIE_SAME_SITE:Lax}
+        secure: ${SERVER_SERVLET_SESSION_COOKIE_SECURE:false}
 
 logging:
   level:
