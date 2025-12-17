@@ -94,7 +94,7 @@ export default function GamePage() {
                         isDrawer={roleInfo.isDrawer}
                         onReroll={actions.rerollWord}
                     />
-                    <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+                    <div className="side-panels">
                         <UserList users={users} />
                         <RankingBoard liveRanking={ranking} />
                     </div>

@@ -59,4 +59,8 @@ main.no-padding {
     .app-shell--game .topbar {
         display: none;
     }
+
+    .app-shell--game main.no-padding {
+        overflow: hidden;
+    }
 }
