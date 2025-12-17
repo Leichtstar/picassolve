@@ -23,15 +23,19 @@ export default function GameHeader({ roleInfo, users, wordLen, secretWord, actio
     }, [roleInfo]);
 
     // Derive display text
-    let centerText = '';
+    let roundMsg = '';
+    let wordMsg = '';
     const drawerName = users.find(u => u.role === 'DRAWER')?.name || '미정';
 
     if (roleInfo.isDrawer) {
-        centerText = `이번 라운드의 Artist🎨는 당신입니다. 제시어 : ${secretWord || '(...)'}`;
+        roundMsg = '이번 라운드의 Artist🎨는 당신입니다.';
+        wordMsg = `제시어 : ${secretWord || '(...)'}`;
     } else if (roleInfo.isAdmin) {
-        centerText = `출제자 : ${drawerName} , 제시어 : ${secretWord || '(...)'}`;
+        roundMsg = `출제자 : ${drawerName}`;
+        wordMsg = `제시어 : ${secretWord || '(...)'}`;
     } else {
-        centerText = `출제자는 ${drawerName}입니다. 제시어는 ${wordLen ?? '?'}글자입니다.`;
+        roundMsg = `출제자는 ${drawerName}입니다.`;
+        wordMsg = `제시어 : ${wordLen ?? '?'}글자`;
     }
 
     return (
@@ -41,8 +45,9 @@ export default function GameHeader({ roleInfo, users, wordLen, secretWord, actio
                 <div className="clock">{time}</div>
             </div>
 
-            <div className="center" style={{ flex: 2, justifyContent: 'center', fontWeight: 'bold', fontSize: '18px' }}>
-                {centerText}
+            <div className="center" style={{ flex: 2, justifyContent: 'center' }}>
+                <span className="round-msg">{roundMsg}</span>
+                <span className="word-msg">{wordMsg}</span>
             </div>
 
             <div className="right-wrap">

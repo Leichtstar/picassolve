@@ -10,7 +10,7 @@ export default function AppLayout() {
     const isGame = location.pathname.startsWith('/game');
 
     return (
-        <div className="app-shell">
+        <div className={`app-shell${isGame ? ' app-shell--game' : ''}`}>
             <header className="topbar">
                 <div className="brand">PicasSolve</div>
                 <nav>

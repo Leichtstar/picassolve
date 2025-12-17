@@ -63,6 +63,7 @@
     gap: 10px;
     white-space: nowrap;
     font-weight: 700;
+    font-size: 18px;
 }
 
 .game-header .right-wrap {
@@ -368,7 +369,7 @@ canvas.game-canvas {
 /* =========================
    Responsive
 ========================= */
-@media (max-width: 1024px) {
+@media (max-width: 1024px) and (orientation: portrait) {
     .game-main {
         flex-direction: column;
         overflow: auto;
@@ -385,5 +386,42 @@ canvas.game-canvas {
         width: 100%;
         height: auto;
         min-height: 200px;
+    }
+}
+
+/* Phone portrait: simplify header content */
+@media (max-width: 768px) and (orientation: portrait) {
+    .game-header .left {
+        display: none;
+    }
+
+    .game-header .round-msg {
+        display: none;
+    }
+
+    .game-header .center {
+        margin-left: 0;
+        justify-content: center;
+        font-size: 16px;
+        white-space: normal;
+        text-align: center;
+    }
+}
+
+/* Phone landscape: hide top headers and use 2-column layout */
+@media (max-width: 1024px) and (orientation: landscape) {
+    .game-header {
+        display: none;
+    }
+
+    .game-main {
+        flex-direction: row;
+        max-width: none;
+        padding: 6px;
+        overflow: hidden;
+    }
+
+    .game-main > .right {
+        width: min(360px, 42vw);
     }
 }
