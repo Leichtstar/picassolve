@@ -17,5 +17,8 @@ Thumbs.db
 
 # Environment variables
 .env
-!.env
-/.env
+.env.*
+!.env.example
+
+# Local deploy secrets
+picassolve.env
