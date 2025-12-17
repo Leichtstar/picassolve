@@ -1,0 +1,16 @@
+services:
+  picassolve:
+    build: .
+    container_name: picassolve
+    restart: unless-stopped
+    env_file:
+      - ./picassolve.env
+    ports:
+      - "127.0.0.1:8099:8099"
+    mem_limit: 650m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+

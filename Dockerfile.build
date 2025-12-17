@@ -1,0 +1,16 @@
+FROM gradle:8.8-jdk17 AS build
+WORKDIR /workspace
+
+COPY gradlew gradlew.bat settings.gradle build.gradle /workspace/
+COPY gradle /workspace/gradle
+COPY src /workspace/src
+
+RUN ./gradlew --no-daemon bootJar -x test
+
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+COPY --from=build /workspace/build/libs/*.jar /app/app.jar
+
+EXPOSE 8099
+ENTRYPOINT ["sh", "-lc", "exec java -jar /app/app.jar"]
+
