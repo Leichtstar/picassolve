@@ -37,7 +37,17 @@ public class GameAuthenticationSuccessHandler implements AuthenticationSuccessHa
 
         session.setAttribute("name", username);
         sessionRegistry.kickAndBind(username, session);
-        // response.sendRedirect("/game"); // Frontend handles navigation
-        response.setStatus(HttpServletResponse.SC_OK);
+
+        // AJAX(React 등) 요청인지 브라우저 직접 요청인지 확인합니다.
+        String requestedWith = request.getHeader("X-Requested-With");
+        String accept = request.getHeader("Accept");
+
+        if ("XMLHttpRequest".equals(requestedWith) || (accept != null && accept.contains("application/json"))) {
+            // API 요청인 경우 성공 상태코드만 반환 (React 프론트엔드 대응)
+            response.setStatus(HttpServletResponse.SC_OK);
+        } else {
+            // 브라우저 폼 제출 등 정적 HTML 환경인 경우 /game으로 리다이렉트
+            response.sendRedirect("/game");
+        }
     }
 }

@@ -41,7 +41,11 @@ public class PageController {
             @RequestParam(value = "error", required = false) String error,
             @RequestParam(value = "logout", required = false) String logout,
             @RequestParam(value = "registered", required = false) String registered,
+            Authentication authentication,
             Model model) {
+        if (authentication != null && authentication.isAuthenticated()) {
+            return "redirect:/game";
+        }
         if ("capacity".equals(error)) {
             model.addAttribute("errorMessage", "동시에 접속할 수 있는 인원을 초과했습니다.");
         } else if (error != null) {

@@ -37,7 +37,10 @@ export const AuthProvider = ({ children }) => {
 
         const res = await backendFetch('/login', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             body: form.toString(),
             credentials: 'include'
         });
