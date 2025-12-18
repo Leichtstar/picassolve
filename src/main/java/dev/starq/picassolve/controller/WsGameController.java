@@ -18,47 +18,53 @@ import org.springframework.stereotype.Controller;
 @Slf4j
 public class WsGameController {
 
-    private final GameService gameService; // 서비스로 위임만 담당
+    private final GameService gameService;
 
-    /** 채팅 전송: 보낸 사람은 Principal 우선, 없으면 DTO의 from 사용 */
     @MessageMapping("/chat.send")
     public void onChat(@Payload ChatMessage msg, Principal p) {
         final String sender = (p != null) ? p.getName()
-            : (msg != null && msg.getFrom() != null ? msg.getFrom() : "guest");
+                : (msg != null && msg.getFrom() != null ? msg.getFrom() : "guest");
         final String text = (msg != null && msg.getText() != null) ? msg.getText() : "";
+        log.trace("[웹소켓] 채팅 메시지 수신 - 보낸이: {}, 내용: {}", sender, text);
         gameService.handleChat(sender, text);
     }
 
     /** 드로잉 스트로크 수신: 서비스가 권한(DRAWER) 체크 */
     @MessageMapping("/draw.stroke")
     public void onDraw(@Payload DrawEvent e, Principal p) {
-        if (e == null) return;                 // 널 방어
-        gameService.addStroke(p, e);           // 내부에서 actionId/newStroke 보정
+        if (e == null)
+            return; // 널 방어
+        gameService.addStroke(p, e); // 내부에서 actionId/newStroke 보정
     }
 
     /** 실행취소: DRAWER만 동작(서비스에서 검증) */
     @MessageMapping("/draw.undo")
     public void onUndo(Principal p) {
-        gameService.undoLastStroke(p);         // 서버는 actionId만 방송(/topic/undo)
+        gameService.undoLastStroke(p); // 서버는 actionId만 방송(/topic/undo)
     }
 
     /** 전체 지우기: DRAWER만 동작(서비스에서 검증) */
     @MessageMapping("/canvas.clear")
     public void onClear(Principal p) {
-        gameService.clearCanvas(p);            // /topic/canvas/clear 브로드캐스트
+        gameService.clearCanvas(p); // /topic/canvas/clear 브로드캐스트
     }
 
     /** 관리자: 특정 유저를 출제자로 지정 */
     @MessageMapping("/admin.setDrawer")
     public void onSetDrawer(@Payload SetDrawerRequest req, Principal p) {
-        if (p == null || req == null || req.getName() == null || req.getName().isBlank()) return;
+        if (p == null || req == null || req.getName() == null || req.getName().isBlank())
+            return;
+        log.info("[웹소켓] 관리자 요청 - 출제자 지정: {} -> {}", p.getName(), req.getName());
         gameService.setDrawerByAdmin(p.getName(), req.getName());
     }
 
     /** 클라이언트 연결 직후 상태 동기화(유저/랭킹/제시어/캔버스 스냅샷) */
     @MessageMapping("/state.sync")
     public void onStateSync(Principal p) {
-        if (p != null) gameService.sendSnapshotTo(p.getName());
+        if (p != null) {
+            log.debug("[웹소켓] 상태 동기화 요청: {}", p.getName());
+            gameService.sendSnapshotTo(p.getName());
+        }
     }
 
     /** (출제자) 제시어 다시받기 */
@@ -77,7 +83,7 @@ public class WsGameController {
     @MessageExceptionHandler
     @SendToUser("/queue/errors")
     public String handleException(Throwable ex) {
-        log.warn("WS handler error: {}", ex.toString());
+        log.error("[웹소켓] 예외 발생: {}", ex.toString(), ex);
         return ex.getMessage() != null ? ex.getMessage() : "Unexpected error";
     }
 }

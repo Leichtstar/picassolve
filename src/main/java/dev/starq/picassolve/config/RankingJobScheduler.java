@@ -24,23 +24,26 @@ public class RankingJobScheduler {
     /** 매일 00:00 KST 스코어 스냅샷. */
     @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Seoul")
     public void runDailySnapshotJob() {
+        log.info("[스케줄러] 일간 스코어 스냅샷 작업을 실행합니다.");
         runJob(dailyScoreSnapshotJob);
     }
 
     /** 매주 월요일 00:00 KST 스코어 스냅샷 후 초기화. */
     @Scheduled(cron = "0 0 0 * * MON", zone = "Asia/Seoul")
     public void runWeeklyResetJob() {
+        log.info("[스케줄러] 주간 스코어 초기화 작업을 실행합니다.");
         runJob(weeklyResetScoresJob);
     }
 
     private void runJob(Job job) {
         JobParameters params = new JobParametersBuilder()
-            .addLocalDateTime("runAt", LocalDateTime.now())
-            .toJobParameters();
+                .addLocalDateTime("runAt", LocalDateTime.now())
+                .toJobParameters();
         try {
             jobLauncher.run(job, params);
+            log.info("[스케줄러] 배치 작업 '{}' 요청이 성공했습니다.", job.getName());
         } catch (Exception e) {
-            log.error("Failed to run job {}: {}", job.getName(), e.getMessage(), e);
+            log.error("[스케줄러] 배치 작업 '{}' 요청 중 오류 발생: {}", job.getName(), e.getMessage(), e);
         }
     }
 }

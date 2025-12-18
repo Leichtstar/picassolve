@@ -13,10 +13,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class UserServiceImpl implements UserService {
 	private final UserRepository userRepository;
 	private final UserMapper userMapper;
@@ -48,7 +50,9 @@ public class UserServiceImpl implements UserService {
 				.team(team)
 				.build();
 
-		return userMapper.toDto(userRepository.save(createdUser));
+		User saved = userRepository.save(createdUser);
+		log.info("[사용자] 신규 가입 완료: {} (ID: {}, 팀: {})", saved.getName(), saved.getId(), saved.getTeam());
+		return userMapper.toDto(saved);
 	}
 
 	@Override
@@ -71,7 +75,9 @@ public class UserServiceImpl implements UserService {
 			user.setPassword(passwordEncoder.encode(newPassword.trim()));
 		}
 
-		return userMapper.toDto(userRepository.save(user));
+		User saved = userRepository.save(user);
+		log.info("[사용자] 정보 수정 완료: {} (ID: {})", saved.getName(), saved.getId());
+		return userMapper.toDto(saved);
 	}
 
 	@Override
@@ -101,6 +107,7 @@ public class UserServiceImpl implements UserService {
 
 		user.setPassword(passwordEncoder.encode(normalizedNew));
 		userRepository.save(user);
+		log.info("[사용자] 비밀번호 변경 완료: {}", normalizedName);
 	}
 
 	@Override
@@ -123,9 +130,10 @@ public class UserServiceImpl implements UserService {
 	public void delete(UUID id) {
 		if (id == null)
 			return;
-		if (userRepository.existsById(id)) {
-			userRepository.deleteById(id);
-		}
+		userRepository.findById(id).ifPresent(user -> {
+			userRepository.delete(user);
+			log.info("[사용자] 계정 삭제 완료 (ID: {}, 이름: {})", id, user.getName());
+		});
 	}
 
 	private String normalize(String value) {
