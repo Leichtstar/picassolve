@@ -27,8 +27,8 @@ import lombok.NoArgsConstructor;
 @Builder
 public class ScoreSnapshot {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @Column(nullable = false)
     private UUID userId;
