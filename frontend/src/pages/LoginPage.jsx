@@ -83,6 +83,18 @@ export default function LoginPage() {
                     <p className="link">
                         아직 계정이 없다면 <Link to="/register">회원가입</Link>
                     </p>
+
+                    <div className="auth-footer">
+                        <span className="auth-footer__credit">Developed by_DevstarQ</span>
+                        <a
+                            className="btn btn-primary btn-small auth-footer__burger"
+                            href="https://link.kakaopay.com/__/W2dVVoX"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Buy me a burger🍔
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

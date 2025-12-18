@@ -82,7 +82,7 @@ body {
 }
 
 .auth-panel {
-    padding: 48px 40px;
+    padding: 48px 40px 38px;
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -238,6 +238,8 @@ body {
 .auth-card--stack {
     max-width: 480px;
     padding: 48px 40px;
+    display: flex;
+    flex-direction: column;
 }
 
 @media (max-width: 900px) {
@@ -259,7 +261,7 @@ body {
     }
 
     .auth-panel {
-        padding: 32px 20px 36px;
+        padding: 32px 20px 28px;
     }
 
     .auth-card--stack {
@@ -268,5 +270,52 @@ body {
 
     .actions {
         flex-direction: column;
+    }
+}
+
+.auth-footer {
+    margin-top: auto;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
+    flex-wrap: nowrap;
+}
+
+.auth-footer__credit {
+    font-size: 12px;
+    color: var(--text-secondary);
+    opacity: 0.85;
+    white-space: nowrap;
+}
+
+.btn-small {
+    height: 28px;
+    padding: 0 10px;
+    font-size: 11px;
+    border-radius: 8px;
+    box-shadow: inherit;
+}
+
+.auth-footer__burger {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.85;
+}
+
+.auth-footer__burger:hover {
+    opacity: 1;
+}
+
+@supports (background: color-mix(in srgb, #000 50%, #fff)) {
+    .auth-footer__burger.btn-primary {
+        background: color-mix(in srgb, var(--brand) 72%, #fff);
+    }
+
+    .auth-footer__burger.btn-primary:hover {
+        background: color-mix(in srgb, var(--brand-dark) 72%, #fff);
     }
 }

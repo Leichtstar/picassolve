@@ -258,6 +258,18 @@ export default function AccountPage() {
                 <div style={{ marginTop: '20px', textAlign: 'center' }}>
                     <button className="btn btn-outline" style={{ width: 'auto', padding: '0 20px', height: '36px' }} onClick={() => nav('/game')}>게임으로 돌아가기</button>
                 </div>
+
+                <div className="auth-footer" style={{ marginTop: '16px' }}>
+                    <span className="auth-footer__credit">Developed by_DevstarQ</span>
+                    <a
+                        className="btn btn-primary btn-small auth-footer__burger"
+                        href="https://link.kakaopay.com/__/W2dVVoX"
+                        target="_blank"
+                        rel="noreferrer"
+                    >
+                        Buy me a burger🍔
+                    </a>
+                </div>
             </div>
         </div>
     );
