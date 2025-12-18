@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 게임의 핵심 상태/브로드캐스트를 관리하는 서비스.
+ * 게임의 핵심 상태 및 브로드캐스트를 관리하는 서비스.
  */
 @Service
 @RequiredArgsConstructor
@@ -29,12 +29,22 @@ public class GameService {
     private final WordRepository wordRepo;
     private final SimpMessagingTemplate broker;
 
+    // --- 게임 상태 변수 ---
     private volatile String currentWord = null;
     private final Object lock = new Object();
     private final Set<String> online = ConcurrentHashMap.newKeySet();
     private volatile long lastDrawAtMs = 0L;
+
+    // --- 상수 설정 ---
     private static final long DRAW_COOLDOWN_MS = 30_000L;
     private static final String ADMIN_NAME = "SYSTEM";
+    private static final int MAX_ACTIONS = 1_200;
+    private static final int MAX_TOTAL_SEGMENTS = 40_000;
+    private static final long MAX_ACTION_AGE_MS = 10 * 60_000L;
+
+    /* -------------------------------------------------------------------------- */
+    /* 1. Session (Login/Logout) */
+    /* -------------------------------------------------------------------------- */
 
     @Transactional
     public boolean login(String name) {
@@ -66,66 +76,9 @@ public class GameService {
         publishUsersAndScoreboard();
     }
 
-    @Transactional
-    public void setDrawerByAdmin(String adminName, String targetUserName) {
-        User admin = userRepo.findByName(adminName).orElseThrow();
-        if (admin.getRole() != Role.ADMIN)
-            throw new RuntimeException("관리자만 가능");
-
-        synchronized (lock) {
-            makeAllDrawersParticipants();
-            User drawer = userRepo.findByName(targetUserName).orElseThrow();
-            drawer.setRole(Role.DRAWER);
-
-            currentWord = pickRandomWord();
-            log.info("[게임] 관리자 권한으로 출제자 변경: {} -> {} (새 제시어: {})", adminName, targetUserName, currentWord);
-            startNewRoundAndBroadcast(drawer, null);
-        }
-    }
-
-    @Transactional
-    public void handleChat(String from, String text) {
-        String raw = (text == null) ? "" : text;
-        String msg = raw.trim();
-
-        synchronized (lock) {
-            boolean fromIsDrawer = userRepo.findByName(from)
-                    .map(u -> u.getRole() == Role.DRAWER).orElse(false);
-            boolean fromIsAdmin = userRepo.findByName(from)
-                    .map(u -> u.getRole() == Role.ADMIN).orElse(false);
-
-            if ((fromIsDrawer || fromIsAdmin) && currentWord != null && msg.equals(currentWord)) {
-                broker.convertAndSend("/topic/chat",
-                        Map.of("from", from, "text", maskWord(currentWord), "system", false));
-                return;
-            }
-
-            publishChat(from, raw, false);
-
-            if (currentWord != null && msg.equals(currentWord)) {
-                User winner = userRepo.findByName(from).orElseThrow();
-                if (winner.getRole() == Role.PARTICIPANT) {
-                    winner.setScore(winner.getScore() + 1);
-                    makeAllDrawersParticipants();
-                    winner.setRole(Role.DRAWER);
-
-                    String oldWord = currentWord;
-                    currentWord = pickRandomWord();
-                    log.info("[게임] 정답 발생! 승자: {} (정답: {}), 다음 제시어: {}", from, oldWord, currentWord);
-
-                    startNewRoundAndBroadcast(winner, winner.getName() + "님 정답! [" + text + "]");
-                }
-            }
-        }
-    }
-
-    public boolean canDraw(Principal principal) {
-        if (principal == null)
-            return false;
-        return userRepo.findByName(principal.getName())
-                .map(u -> u.getRole() == Role.DRAWER)
-                .orElse(false);
-    }
+    /* -------------------------------------------------------------------------- */
+    /* 2. Round & Word Logic */
+    /* -------------------------------------------------------------------------- */
 
     @Transactional
     public void rerollWord(Principal p) {
@@ -141,6 +94,25 @@ public class GameService {
             startNewRoundAndBroadcast(me, me.getName() + "님이 제시어를 다시 받았습니다.");
         }
     }
+
+    private void startNewRoundAndBroadcast(User drawer, String systemMsg) {
+        resetDrawingState(true);
+
+        broker.convertAndSendToUser(drawer.getName(), "/queue/word", currentWord);
+        userRepo.findByName(ADMIN_NAME)
+                .ifPresent(admin -> broker.convertAndSendToUser(admin.getName(), "/queue/word", currentWord));
+
+        if (systemMsg != null && !systemMsg.isBlank()) {
+            publishChat("SYSTEM", systemMsg, true);
+        }
+
+        publishUsersAndScoreboard();
+        publishWordLen();
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* 3. Role Management */
+    /* -------------------------------------------------------------------------- */
 
     @Transactional
     public void setMeAsDrawer(Principal p) {
@@ -159,84 +131,89 @@ public class GameService {
         synchronized (lock) {
             if (me.getRole() == Role.DRAWER)
                 return;
-
             makeAllDrawersParticipants();
             me.setRole(Role.DRAWER);
-
             currentWord = pickRandomWord();
             log.info("[게임] '내가 그리기'로 출제자 변경: {} (새 제시어: {})", me.getName(), currentWord);
             startNewRoundAndBroadcast(me, me.getName() + "님이 출제자로 지정되었습니다.");
         }
     }
 
-    private void publishUsersAndScoreboard() {
-        List<User> onlineUsers = online.isEmpty() ? List.of() : userRepo.findByNameIn(online);
-        List<String> users = onlineUsers.stream()
-                .map(u -> u.getName() + " (" + u.getRole() + ")")
-                .toList();
-        broker.convertAndSend("/topic/users", users);
+    @Transactional
+    public void setDrawerByAdmin(String adminName, String targetUserName) {
+        User admin = userRepo.findByName(adminName).orElseThrow();
+        if (admin.getRole() != Role.ADMIN)
+            throw new RuntimeException("관리자만 가능");
 
-        List<ScoreBoardEntry> ranking = userRepo.findAll().stream()
-                .filter(u -> u.getScore() > 0)
-                .sorted(Comparator.comparingInt(User::getScore).reversed())
-                .map(u -> new ScoreBoardEntry(u.getName(), u.getTeam(), u.getScore()))
-                .toList();
-        broker.convertAndSend("/topic/scoreboard", ranking);
-    }
-
-    public void sendSnapshotTo(String username) {
-        List<User> onlineUsers = online.isEmpty() ? List.of() : userRepo.findByNameIn(online);
-        List<String> users = onlineUsers.stream()
-                .map(u -> u.getName() + " (" + u.getRole() + ")")
-                .toList();
-        broker.convertAndSendToUser(username, "/queue/users", users);
-
-        List<ScoreBoardEntry> ranking = userRepo.findAll().stream()
-                .filter(u -> u.getScore() > 0)
-                .sorted(Comparator.comparingInt(User::getScore).reversed())
-                .map(u -> new ScoreBoardEntry(u.getName(), u.getTeam(), u.getScore()))
-                .toList();
-        broker.convertAndSendToUser(username, "/queue/scoreboard", ranking);
-
-        broker.convertAndSendToUser(username, "/queue/wordlen", computeWordLen(currentWord));
-        userRepo.findByName(username).ifPresent(u -> {
-            if (currentWord != null && (u.getRole() == Role.DRAWER || u.getRole() == Role.ADMIN)) {
-                broker.convertAndSendToUser(username, "/queue/word", currentWord);
-            }
-        });
-
-        sendCanvasSnapshotTo(username);
-    }
-
-    static class StrokeAction {
-        final String id;
-        final long createdAtMs = System.currentTimeMillis();
-        final List<DrawEvent> segments = new ArrayList<>();
-
-        StrokeAction(String id) {
-            this.id = id;
+        synchronized (lock) {
+            makeAllDrawersParticipants();
+            User drawer = userRepo.findByName(targetUserName).orElseThrow();
+            drawer.setRole(Role.DRAWER);
+            currentWord = pickRandomWord();
+            log.info("[게임] 관리자 권한으로 출제자 변경: {} -> {} (새 제시어: {})", adminName, targetUserName, currentWord);
+            startNewRoundAndBroadcast(drawer, null);
         }
+    }
+
+    private void makeAllDrawersParticipants() {
+        userRepo.findAll().forEach(u -> {
+            if (u.getRole() == Role.DRAWER)
+                u.setRole(Role.PARTICIPANT);
+        });
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* 4. Chat & Answer Logic */
+    /* -------------------------------------------------------------------------- */
+
+    @Transactional
+    public void handleChat(String from, String text) {
+        String raw = (text == null) ? "" : text;
+        String msg = raw.trim();
+
+        synchronized (lock) {
+            boolean fromIsDrawer = userRepo.findByName(from).map(u -> u.getRole() == Role.DRAWER).orElse(false);
+            boolean fromIsAdmin = userRepo.findByName(from).map(u -> u.getRole() == Role.ADMIN).orElse(false);
+
+            if ((fromIsDrawer || fromIsAdmin) && currentWord != null && msg.equals(currentWord)) {
+                broker.convertAndSend("/topic/chat",
+                        Map.of("from", from, "text", maskWord(currentWord), "system", false));
+                return;
+            }
+
+            publishChat(from, raw, false);
+
+            if (currentWord != null && msg.equals(currentWord)) {
+                User winner = userRepo.findByName(from).orElseThrow();
+                if (winner.getRole() == Role.PARTICIPANT) {
+                    winner.setScore(winner.getScore() + 1);
+                    makeAllDrawersParticipants();
+                    winner.setRole(Role.DRAWER);
+                    String oldWord = currentWord;
+                    currentWord = pickRandomWord();
+                    log.info("[게임] 정답 발생! 승자: {} (정답: {}), 다음 제시어: {}", from, oldWord, currentWord);
+                    startNewRoundAndBroadcast(winner, winner.getName() + "님 정답! [" + text + "]");
+                }
+            }
+        }
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* 5. Drawing & Canvas */
+    /* -------------------------------------------------------------------------- */
+
+    public boolean canDraw(Principal principal) {
+        if (principal == null)
+            return false;
+        return userRepo.findByName(principal.getName()).map(u -> u.getRole() == Role.DRAWER).orElse(false);
     }
 
     private final List<StrokeAction> strokeActions = new ArrayList<>();
-    private static final int MAX_ACTIONS = 1_200;
-    private static final int MAX_TOTAL_SEGMENTS = 40_000;
-    private static final long MAX_ACTION_AGE_MS = 10 * 60_000L;
     private int totalSegments = 0;
-
-    private void resetDrawingState(boolean broadcastClear) {
-        synchronized (strokeActions) {
-            strokeActions.clear();
-            totalSegments = 0;
-        }
-        if (broadcastClear)
-            broker.convertAndSend("/topic/canvas/clear", "");
-    }
 
     public void addStroke(Principal p, DrawEvent e) {
         if (!canDraw(p))
             return;
-
         if (e.getMode() == null || e.getMode().isBlank())
             e.setMode("pen");
         if (e.getActionId() == null || e.getActionId().isBlank()) {
@@ -245,8 +222,7 @@ public class GameService {
         }
 
         synchronized (strokeActions) {
-            if (Boolean.TRUE.equals(e.getNewStroke())
-                    || strokeActions.isEmpty()
+            if (Boolean.TRUE.equals(e.getNewStroke()) || strokeActions.isEmpty()
                     || !strokeActions.get(strokeActions.size() - 1).id.equals(e.getActionId())) {
                 StrokeAction a = new StrokeAction(e.getActionId());
                 a.segments.add(e);
@@ -258,7 +234,6 @@ public class GameService {
             }
             trimStrokeHistoryLocked();
         }
-
         broker.convertAndSend("/topic/draw", e);
         lastDrawAtMs = System.currentTimeMillis();
     }
@@ -283,15 +258,13 @@ public class GameService {
         resetDrawingState(true);
     }
 
-    public void sendCanvasSnapshotTo(String username) {
-        broker.convertAndSendToUser(username, "/queue/canvas/clear", "");
+    private void resetDrawingState(boolean broadcastClear) {
         synchronized (strokeActions) {
-            for (var action : strokeActions) {
-                for (var seg : action.segments) {
-                    broker.convertAndSendToUser(username, "/queue/draw", seg);
-                }
-            }
+            strokeActions.clear();
+            totalSegments = 0;
         }
+        if (broadcastClear)
+            broker.convertAndSend("/topic/canvas/clear", "");
     }
 
     private void trimStrokeHistoryLocked() {
@@ -309,6 +282,60 @@ public class GameService {
         if (totalSegments < 0)
             totalSegments = 0;
     }
+
+    /* -------------------------------------------------------------------------- */
+    /* 6. State Sync & Snapshots */
+    /* -------------------------------------------------------------------------- */
+
+    public void sendSnapshotTo(String username) {
+        List<User> onlineUsers = online.isEmpty() ? List.of() : userRepo.findByNameIn(online);
+        List<String> users = onlineUsers.stream().map(u -> u.getName() + " (" + u.getRole() + ")").toList();
+        broker.convertAndSendToUser(username, "/queue/users", users);
+
+        List<ScoreBoardEntry> ranking = userRepo.findAll().stream()
+                .filter(u -> u.getScore() > 0)
+                .sorted(Comparator.comparingInt(User::getScore).reversed())
+                .map(u -> new ScoreBoardEntry(u.getName(), u.getTeam(), u.getScore()))
+                .toList();
+        broker.convertAndSendToUser(username, "/queue/scoreboard", ranking);
+
+        broker.convertAndSendToUser(username, "/queue/wordlen", computeWordLen(currentWord));
+        userRepo.findByName(username).ifPresent(u -> {
+            if (currentWord != null && (u.getRole() == Role.DRAWER || u.getRole() == Role.ADMIN)) {
+                broker.convertAndSendToUser(username, "/queue/word", currentWord);
+            }
+        });
+
+        sendCanvasSnapshotTo(username);
+    }
+
+    public void sendCanvasSnapshotTo(String username) {
+        broker.convertAndSendToUser(username, "/queue/canvas/clear", "");
+        synchronized (strokeActions) {
+            for (var action : strokeActions) {
+                for (var seg : action.segments) {
+                    broker.convertAndSendToUser(username, "/queue/draw", seg);
+                }
+            }
+        }
+    }
+
+    private void publishUsersAndScoreboard() {
+        List<User> onlineUsers = online.isEmpty() ? List.of() : userRepo.findByNameIn(online);
+        List<String> users = onlineUsers.stream().map(u -> u.getName() + " (" + u.getRole() + ")").toList();
+        broker.convertAndSend("/topic/users", users);
+
+        List<ScoreBoardEntry> ranking = userRepo.findAll().stream()
+                .filter(u -> u.getScore() > 0)
+                .sorted(Comparator.comparingInt(User::getScore).reversed())
+                .map(u -> new ScoreBoardEntry(u.getName(), u.getTeam(), u.getScore()))
+                .toList();
+        broker.convertAndSend("/topic/scoreboard", ranking);
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /* 7. Utility & Helpers */
+    /* -------------------------------------------------------------------------- */
 
     private int computeWordLen(String word) {
         if (word == null)
@@ -350,25 +377,13 @@ public class GameService {
         broker.convertAndSend("/topic/chat", Map.of("from", from, "text", text, "system", system));
     }
 
-    private void makeAllDrawersParticipants() {
-        userRepo.findAll().forEach(u -> {
-            if (u.getRole() == Role.DRAWER)
-                u.setRole(Role.PARTICIPANT);
-        });
-    }
+    static class StrokeAction {
+        final String id;
+        final long createdAtMs = System.currentTimeMillis();
+        final List<DrawEvent> segments = new ArrayList<>();
 
-    private void startNewRoundAndBroadcast(User drawer, String systemMsg) {
-        resetDrawingState(true);
-
-        broker.convertAndSendToUser(drawer.getName(), "/queue/word", currentWord);
-        userRepo.findByName(ADMIN_NAME)
-                .ifPresent(admin -> broker.convertAndSendToUser(admin.getName(), "/queue/word", currentWord));
-
-        if (systemMsg != null && !systemMsg.isBlank()) {
-            publishChat("SYSTEM", systemMsg, true);
+        StrokeAction(String id) {
+            this.id = id;
         }
-
-        publishUsersAndScoreboard();
-        publishWordLen();
     }
 }

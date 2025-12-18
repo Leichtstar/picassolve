@@ -1,25 +1,19 @@
 package dev.starq.picassolve.controller;
 
 import dev.starq.picassolve.dto.Request.UserCreateRequest;
-
 import dev.starq.picassolve.dto.UserDto;
 import dev.starq.picassolve.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.ResponseBody;
-import jakarta.servlet.http.HttpSession;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Slf4j
@@ -28,6 +22,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class PageController {
 
     private final UserService userService;
+
+    /* -------------------------------------------------------------------------- */
+    /* View Endpoints */
+    /* -------------------------------------------------------------------------- */
 
     @GetMapping("/")
     public String root(Authentication authentication) {
@@ -50,8 +48,6 @@ public class PageController {
             model.addAttribute("errorMessage", "동시에 접속할 수 있는 인원을 초과했습니다.");
         } else if (error != null) {
             model.addAttribute("errorMessage", "이름 또는 비밀번호가 올바르지 않습니다.");
-        } else {
-            model.addAttribute("errorMessage", null);
         }
         model.addAttribute("logoutMessage", logout != null ? "정상적으로 로그아웃되었습니다." : null);
         model.addAttribute("registeredMessage", registered != null ? "회원가입이 완료되었습니다. 로그인해 주세요." : null);
@@ -82,6 +78,17 @@ public class PageController {
         return "redirect:/login";
     }
 
+    @GetMapping("/game")
+    public String game(HttpSession session, Model model) {
+        String name = (String) session.getAttribute("name");
+        if (name == null) {
+            return "redirect:/login";
+        }
+        model.addAttribute("name", name);
+        model.addAttribute("sid", session.getId());
+        return "game";
+    }
+
     @GetMapping("/account/password")
     public String passwordForm(Model model, Authentication authentication) {
         model.addAttribute("username", authentication != null ? authentication.getName() : "");
@@ -89,7 +96,7 @@ public class PageController {
     }
 
     @PostMapping("/account/password")
-    public String changePassword(
+    public String changePasswordView(
             @RequestParam String currentPassword,
             @RequestParam String newPassword,
             @RequestParam String confirmPassword,
@@ -117,16 +124,9 @@ public class PageController {
         return "redirect:/account/password";
     }
 
-    @GetMapping("/game")
-    public String game(HttpSession session, Model model) {
-        String name = (String) session.getAttribute("name");
-        if (name == null) {
-            return "redirect:/login";
-        }
-        model.addAttribute("name", name);
-        model.addAttribute("sid", session.getId());
-        return "game";
-    }
+    /* -------------------------------------------------------------------------- */
+    /* API Endpoints */
+    /* -------------------------------------------------------------------------- */
 
     @GetMapping("/api/me")
     @ResponseBody
@@ -173,7 +173,7 @@ public class PageController {
     @ResponseBody
     public ResponseEntity<?> deleteAccount(@RequestBody Map<String, String> payload,
             Authentication authentication,
-            jakarta.servlet.http.HttpServletRequest request) {
+            HttpServletRequest request) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -181,7 +181,7 @@ public class PageController {
 
         try {
             userService.deleteUser(authentication.getName(), password);
-            request.getSession().invalidate(); // Logout
+            request.getSession().invalidate();
             return ResponseEntity.ok().build();
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
@@ -205,5 +205,4 @@ public class PageController {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
-
 }

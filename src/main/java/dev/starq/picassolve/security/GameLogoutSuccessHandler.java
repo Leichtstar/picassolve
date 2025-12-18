@@ -40,9 +40,18 @@ public class GameLogoutSuccessHandler implements LogoutSuccessHandler {
         cookie.setHttpOnly(true);
         response.addCookie(cookie);
 
-        // For SPA: Return 200 OK instead of redirect
-        response.setStatus(HttpServletResponse.SC_OK);
-        response.setContentType("application/json");
-        response.getWriter().write("{\"message\":\"Logged out successfully\"}");
+        // AJAX(React 등) 요청인지 브라우저 직접 요청인지 확인합니다.
+        String requestedWith = request.getHeader("X-Requested-With");
+        String accept = request.getHeader("Accept");
+
+        if ("XMLHttpRequest".equals(requestedWith) || (accept != null && accept.contains("application/json"))) {
+            // API 요청인 경우 성공 상태코드와 메시지 반환 (React 프론트엔드 대응)
+            response.setStatus(HttpServletResponse.SC_OK);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"message\":\"Logged out successfully\"}");
+        } else {
+            // 브라우저 폼 제출 등 정적 HTML 환경인 경우 /login으로 리다이렉트
+            response.sendRedirect("/login?logout");
+        }
     }
 }

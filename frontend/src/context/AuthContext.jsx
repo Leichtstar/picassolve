@@ -55,7 +55,13 @@ export const AuthProvider = ({ children }) => {
 
     const logout = async () => {
         try {
-            await backendFetch('/logout', { method: 'POST', credentials: 'include' });
+            await backendFetch('/logout', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'include'
+            });
 
             // Clear JSESSIONID cookie from frontend
             document.cookie = 'JSESSIONID=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
