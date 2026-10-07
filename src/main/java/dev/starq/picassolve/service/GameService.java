@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +42,9 @@ public class GameService {
     private static final int MAX_ACTIONS = 1_200;
     private static final int MAX_TOTAL_SEGMENTS = 40_000;
     private static final long MAX_ACTION_AGE_MS = 10 * 60_000L;
+    private static final int MAX_CHAT_LEN = 200;
+    private static final int SCOREBOARD_LIMIT = 50;
+    private static final int SNAPSHOT_CHUNK = 500;
 
     /* -------------------------------------------------------------------------- */
     /* 1. Session (Login/Logout) */
@@ -169,6 +173,9 @@ public class GameService {
     @Transactional
     public void handleChat(String from, String text) {
         String raw = (text == null) ? "" : text;
+        if (raw.length() > MAX_CHAT_LEN) {
+            raw = raw.substring(0, MAX_CHAT_LEN);
+        }
         String msg = raw.trim();
 
         synchronized (lock) {
@@ -292,11 +299,7 @@ public class GameService {
         List<String> users = onlineUsers.stream().map(u -> u.getName() + " (" + u.getRole() + ")").toList();
         broker.convertAndSendToUser(username, "/queue/users", users);
 
-        List<ScoreBoardEntry> ranking = userRepo.findAll().stream()
-                .filter(u -> u.getScore() > 0)
-                .sorted(Comparator.comparingInt(User::getScore).reversed())
-                .map(u -> new ScoreBoardEntry(u.getName(), u.getTeam(), u.getScore()))
-                .toList();
+        List<ScoreBoardEntry> ranking = topScoreboard();
         broker.convertAndSendToUser(username, "/queue/scoreboard", ranking);
 
         broker.convertAndSendToUser(username, "/queue/wordlen", computeWordLen(currentWord));
@@ -311,12 +314,20 @@ public class GameService {
 
     public void sendCanvasSnapshotTo(String username) {
         broker.convertAndSendToUser(username, "/queue/canvas/clear", "");
+        List<DrawEvent> batch = new ArrayList<>(SNAPSHOT_CHUNK);
         synchronized (strokeActions) {
             for (var action : strokeActions) {
                 for (var seg : action.segments) {
-                    broker.convertAndSendToUser(username, "/queue/draw", seg);
+                    batch.add(seg);
+                    if (batch.size() >= SNAPSHOT_CHUNK) {
+                        broker.convertAndSendToUser(username, "/queue/draw-batch", List.copyOf(batch));
+                        batch.clear();
+                    }
                 }
             }
+        }
+        if (!batch.isEmpty()) {
+            broker.convertAndSendToUser(username, "/queue/draw-batch", batch);
         }
     }
 
@@ -325,12 +336,15 @@ public class GameService {
         List<String> users = onlineUsers.stream().map(u -> u.getName() + " (" + u.getRole() + ")").toList();
         broker.convertAndSend("/topic/users", users);
 
-        List<ScoreBoardEntry> ranking = userRepo.findAll().stream()
-                .filter(u -> u.getScore() > 0)
-                .sorted(Comparator.comparingInt(User::getScore).reversed())
+        List<ScoreBoardEntry> ranking = topScoreboard();
+        broker.convertAndSend("/topic/scoreboard", ranking);
+    }
+
+
+    private List<ScoreBoardEntry> topScoreboard() {
+        return userRepo.findTopByScore(PageRequest.of(0, SCOREBOARD_LIMIT)).stream()
                 .map(u -> new ScoreBoardEntry(u.getName(), u.getTeam(), u.getScore()))
                 .toList();
-        broker.convertAndSend("/topic/scoreboard", ranking);
     }
 
     /* -------------------------------------------------------------------------- */
