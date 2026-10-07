@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-export default function GameHeader({ roleInfo, users, wordLen, secretWord, actions }) {
+export default function GameHeader({ roleInfo, users, wordLen, secretWord, actions, meDrawCooldownSec = 0 }) {
     const { user } = useAuth();
     const [time, setTime] = useState('');
     const [targetDrawer, setTargetDrawer] = useState('');
-    const [canMeDraw, setCanMeDraw] = useState(false); // Throttle logic (simplified)
 
     useEffect(() => {
         const tick = () => {
@@ -17,16 +16,13 @@ export default function GameHeader({ roleInfo, users, wordLen, secretWord, actio
         return () => clearInterval(id);
     }, []);
 
-    // Simple throttle/cooldown for "Me Draw" (simplified compared to legacy)
-    useEffect(() => {
-        setCanMeDraw(!roleInfo.isDrawer && !roleInfo.isAdmin);
-    }, [roleInfo]);
+    const canMeDraw = !roleInfo.isDrawer && !roleInfo.isAdmin;
+    const coolingDown = meDrawCooldownSec > 0;
 
-    // Derive display text
-    let roundMsg = '';
-    let wordMsg = '';
     const drawerName = users.find(u => u.role === 'DRAWER')?.name || '미정';
 
+    let roundMsg = '';
+    let wordMsg = '';
     if (roleInfo.isDrawer) {
         roundMsg = '이번 라운드의 Artist🎨는 당신입니다.';
         wordMsg = `제시어 : ${secretWord || '(...)'}`;
@@ -64,7 +60,13 @@ export default function GameHeader({ roleInfo, users, wordLen, secretWord, actio
                     </div>
                 )}
                 {canMeDraw && (
-                    <button onClick={actions.reqMeDraw}>내가 그리기</button>
+                    <button
+                        onClick={actions.reqMeDraw}
+                        disabled={coolingDown}
+                        title={coolingDown ? `${meDrawCooldownSec}초 후 가능` : '지금 내가 그리기 가능'}
+                    >
+                        {coolingDown ? `내가 그리기 (${meDrawCooldownSec}초)` : '내가 그리기'}
+                    </button>
                 )}
             </div>
         </header>

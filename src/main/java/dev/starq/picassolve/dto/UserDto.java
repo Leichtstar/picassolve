@@ -8,6 +8,6 @@ public record UserDto(
 	String name,
 	int team,
 	int score,
-	User.Role role
-)
-{}
+	User.Role role,
+	String sid
+) {}

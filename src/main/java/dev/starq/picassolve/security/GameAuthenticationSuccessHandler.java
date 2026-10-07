@@ -28,25 +28,26 @@ public class GameAuthenticationSuccessHandler implements AuthenticationSuccessHa
         String username = authentication.getName();
         HttpSession session = request.getSession(true);
 
-        if (!gameService.login(username)) {
+        // Presence is WS-scoped; only capacity gate here so full rooms fail at login.
+        if (!gameService.hasCapacityFor(username)) {
             SecurityContextHolder.clearContext();
             session.invalidate();
             response.sendRedirect("/login?error=capacity");
             return;
         }
 
+        // Ensure SYSTEM account keeps ADMIN role on HTTP login (without joining online yet).
+        gameService.ensureLoginRoles(username);
+
         session.setAttribute("name", username);
         sessionRegistry.kickAndBind(username, session);
 
-        // AJAX(React 등) 요청인지 브라우저 직접 요청인지 확인합니다.
         String requestedWith = request.getHeader("X-Requested-With");
         String accept = request.getHeader("Accept");
 
         if ("XMLHttpRequest".equals(requestedWith) || (accept != null && accept.contains("application/json"))) {
-            // API 요청인 경우 성공 상태코드만 반환 (React 프론트엔드 대응)
             response.setStatus(HttpServletResponse.SC_OK);
         } else {
-            // 브라우저 폼 제출 등 정적 HTML 환경인 경우 /game으로 리다이렉트
             response.sendRedirect("/game");
         }
     }

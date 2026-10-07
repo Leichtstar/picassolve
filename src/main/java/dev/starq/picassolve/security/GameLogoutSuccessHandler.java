@@ -25,7 +25,7 @@ public class GameLogoutSuccessHandler implements LogoutSuccessHandler {
             HttpServletResponse response,
             Authentication authentication) throws IOException, ServletException {
         if (authentication != null) {
-            gameService.logout(authentication.getName());
+            gameService.forceLeave(authentication.getName());
         }
         HttpSession session = request.getSession(false);
         if (session != null) {

@@ -274,6 +274,24 @@
       refreshMeDrawBtn();
     });
 
+    // live micro-batch from server
+    stomp.subscribe('/topic/draw-batch', msg => {
+      const segs = JSON.parse(msg.body);
+      if (!Array.isArray(segs)) return;
+      for (const e of segs) {
+        if (e.newStroke || !currentAction || currentAction.id !== e.actionId) {
+          currentAction = { id: e.actionId, segs: [] };
+          actions.push(currentAction);
+        }
+        currentAction.segs.push(e);
+        totalLocalSegments++;
+        trimLocalHistory();
+        drawSegment(e);
+      }
+      lastLiveDrawAt = Date.now();
+      refreshMeDrawBtn();
+    });
+
     // 글자수(브로드캐스트)
     stomp.subscribe('/topic/wordlen', msg => {
       wordLen = parseInt(msg.body, 10);

@@ -130,7 +130,7 @@ public class PageController {
 
     @GetMapping("/api/me")
     @ResponseBody
-    public ResponseEntity<UserDto> me(Authentication authentication) {
+    public ResponseEntity<UserDto> me(Authentication authentication, HttpSession session) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -138,7 +138,7 @@ public class PageController {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
-        return ResponseEntity.ok(user);
+        return ResponseEntity.ok(new UserDto(user.id(), user.name(), user.team(), user.score(), user.role(), session.getId()));
     }
 
     @PutMapping("/api/user")
