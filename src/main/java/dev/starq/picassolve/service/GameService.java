@@ -11,6 +11,7 @@ import java.security.Principal;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicLong;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -35,6 +36,7 @@ public class GameService {
     private final Object lock = new Object();
     private final Set<String> online = ConcurrentHashMap.newKeySet();
     private volatile long lastDrawAtMs = 0L;
+    private final AtomicLong lastStrokeNs = new AtomicLong(0L);
 
     // --- 상수 설정 ---
     private static final long DRAW_COOLDOWN_MS = 30_000L;
@@ -45,6 +47,11 @@ public class GameService {
     private static final int MAX_CHAT_LEN = 200;
     private static final int SCOREBOARD_LIMIT = 50;
     private static final int SNAPSHOT_CHUNK = 500;
+    private static final double MAX_STROKE_WIDTH = 40;
+    private static final int MAX_COLOR_LEN = 32;
+    private static final int MAX_ACTION_ID_LEN = 64;
+    /** Soft anti-flood: ~1000 segments/sec. Normal mouse drawing stays well under this. */
+    private static final long MIN_STROKE_INTERVAL_NS = 1_000_000L;
 
     /* -------------------------------------------------------------------------- */
     /* 1. Session (Login/Logout) */
@@ -160,10 +167,7 @@ public class GameService {
     }
 
     private void makeAllDrawersParticipants() {
-        userRepo.findAll().forEach(u -> {
-            if (u.getRole() == Role.DRAWER)
-                u.setRole(Role.PARTICIPANT);
-        });
+        userRepo.findByRole(Role.DRAWER).forEach(u -> u.setRole(Role.PARTICIPANT));
     }
 
     /* -------------------------------------------------------------------------- */
@@ -219,8 +223,29 @@ public class GameService {
     private int totalSegments = 0;
 
     public void addStroke(Principal p, DrawEvent e) {
-        if (!canDraw(p))
+        if (!canDraw(p) || e == null)
             return;
+        if (!Double.isFinite(e.getX1()) || !Double.isFinite(e.getY1())
+                || !Double.isFinite(e.getX2()) || !Double.isFinite(e.getY2())
+                || !Double.isFinite(e.getWidth()))
+            return;
+        double width = e.getWidth();
+        if (width < 1)
+            width = 1;
+        if (width > MAX_STROKE_WIDTH)
+            width = MAX_STROKE_WIDTH;
+        e.setWidth(width);
+        if (e.getColor() != null && e.getColor().length() > MAX_COLOR_LEN)
+            return;
+        if (e.getActionId() != null && e.getActionId().length() > MAX_ACTION_ID_LEN)
+            return;
+
+        long nowNs = System.nanoTime();
+        long prevNs = lastStrokeNs.get();
+        if (prevNs != 0L && nowNs - prevNs < MIN_STROKE_INTERVAL_NS)
+            return;
+        lastStrokeNs.set(nowNs);
+
         if (e.getMode() == null || e.getMode().isBlank())
             e.setMode("pen");
         if (e.getActionId() == null || e.getActionId().isBlank()) {

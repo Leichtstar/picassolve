@@ -2,23 +2,27 @@ package dev.starq.picassolve.config;
 
 import dev.starq.picassolve.entity.ScoreSnapshot;
 import dev.starq.picassolve.entity.ScoreSnapshot.SnapshotPeriod;
+import dev.starq.picassolve.entity.User;
 import dev.starq.picassolve.repository.ScoreSnapshotRepository;
 import dev.starq.picassolve.repository.UserRepository;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.PlatformTransactionManager;
-import lombok.extern.slf4j.Slf4j;
 
 @Configuration
 @EnableBatchProcessing
@@ -32,6 +36,7 @@ public class RankingBatchConfig {
     private final ScoreSnapshotRepository snapshotRepository;
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final int SNAPSHOT_PAGE_SIZE = 200;
 
     @Bean
     public Job dailyScoreSnapshotJob() {
@@ -58,19 +63,8 @@ public class RankingBatchConfig {
                     snapshotRepository.deleteBySnapshotDateAndPeriod(today, SnapshotPeriod.DAILY);
                     log.info("[배치] 기존 일간 스냅샷 데이터 삭제 완료");
 
-                    List<ScoreSnapshot> snapshots = userRepository.findAll().stream()
-                            .map(u -> ScoreSnapshot.builder()
-                                    .userId(u.getId())
-                                    .username(u.getName())
-                                    .team(u.getTeam())
-                                    .score(u.getScore())
-                                    .snapshotDate(today)
-                                    .period(SnapshotPeriod.DAILY)
-                                    .build())
-                            .toList();
-
-                    snapshotRepository.saveAll(snapshots);
-                    log.info("[배치] 일간 스냅샷 저장 완료 (건수: {}건)", snapshots.size());
+                    int saved = saveSnapshotsPaged(today, SnapshotPeriod.DAILY);
+                    log.info("[배치] 일간 스냅샷 저장 완료 (건수: {}건, score>0만)", saved);
                     return RepeatStatus.FINISHED;
                 }, transactionManager)
                 .build();
@@ -86,19 +80,8 @@ public class RankingBatchConfig {
                     snapshotRepository.deleteBySnapshotDateAndPeriod(today, SnapshotPeriod.WEEKLY);
                     log.info("[배치] 기존 주간 스냅샷 데이터 삭제 완료");
 
-                    List<ScoreSnapshot> snapshots = userRepository.findAll().stream()
-                            .map(u -> ScoreSnapshot.builder()
-                                    .userId(u.getId())
-                                    .username(u.getName())
-                                    .team(u.getTeam())
-                                    .score(u.getScore())
-                                    .snapshotDate(today)
-                                    .period(SnapshotPeriod.WEEKLY)
-                                    .build())
-                            .toList();
-
-                    snapshotRepository.saveAll(snapshots);
-                    log.info("[배치] 주간 스냅샷 저장 완료 (건수: {}건)", snapshots.size());
+                    int saved = saveSnapshotsPaged(today, SnapshotPeriod.WEEKLY);
+                    log.info("[배치] 주간 스냅샷 저장 완료 (건수: {}건, score>0만)", saved);
                     return RepeatStatus.FINISHED;
                 }, transactionManager)
                 .build();
@@ -114,5 +97,40 @@ public class RankingBatchConfig {
                     return RepeatStatus.FINISHED;
                 }, transactionManager)
                 .build();
+    }
+
+    /** Page users and persist only score>0 rows to limit memory and snapshot growth. */
+    private int saveSnapshotsPaged(LocalDate today, SnapshotPeriod period) {
+        int page = 0;
+        int totalSaved = 0;
+        while (true) {
+            Page<User> users = userRepository.findAll(PageRequest.of(page, SNAPSHOT_PAGE_SIZE));
+            if (users.isEmpty()) {
+                break;
+            }
+            List<ScoreSnapshot> batch = new ArrayList<>();
+            for (User u : users) {
+                if (u.getScore() <= 0) {
+                    continue;
+                }
+                batch.add(ScoreSnapshot.builder()
+                        .userId(u.getId())
+                        .username(u.getName())
+                        .team(u.getTeam())
+                        .score(u.getScore())
+                        .snapshotDate(today)
+                        .period(period)
+                        .build());
+            }
+            if (!batch.isEmpty()) {
+                snapshotRepository.saveAll(batch);
+                totalSaved += batch.size();
+            }
+            if (!users.hasNext()) {
+                break;
+            }
+            page++;
+        }
+        return totalSaved;
     }
 }

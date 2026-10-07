@@ -14,6 +14,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByName(String name);
     boolean existsByName(String name);
     List<User> findByNameIn(Collection<String> names);
+    List<User> findByRole(User.Role role);
 
     @Query("select u from User u where u.score > 0 order by u.score desc")
     List<User> findTopByScore(Pageable pageable);
