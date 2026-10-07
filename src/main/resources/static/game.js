@@ -58,6 +58,9 @@
     line.appendChild(document.createTextNode(text || '')); // 안전하게 기본값 처리
 
     div.appendChild(line);
+    while (div.childElementCount > 200) {
+      div.removeChild(div.firstChild);
+    }
     div.scrollTop = div.scrollHeight;
   }
 
@@ -283,7 +286,7 @@
       resetLocalHistory();
     });
 
-    // 개인 큐: 스냅샷용 드로잉 (과거 선들 순차 재생)
+    // 개인 큐: 스냅샷용 드로잉 (과거 선들 순차 재생, legacy 단일 세그먼트)
     stomp.subscribe('/user/queue/draw', msg => {
       const e = JSON.parse(msg.body);
 
@@ -297,6 +300,22 @@
       trimLocalHistory();
 
       drawSegment(e); // 즉시 화면에 그리기
+    });
+
+    // 개인 큐: 스냅샷용 드로잉 배치 (서버가 ~500개씩 전송)
+    stomp.subscribe('/user/queue/draw-batch', msg => {
+      const segs = JSON.parse(msg.body);
+      if (!Array.isArray(segs)) return;
+      for (const e of segs) {
+        if (e.newStroke || !currentAction || currentAction.id !== e.actionId) {
+          currentAction = { id: e.actionId, segs: [] };
+          actions.push(currentAction);
+        }
+        currentAction.segs.push(e);
+        totalLocalSegments++;
+        trimLocalHistory();
+        drawSegment(e);
+      }
     });
 
     // (선택) 강제 로그아웃 신호 처리

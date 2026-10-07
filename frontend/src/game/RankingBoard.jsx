@@ -10,7 +10,7 @@ export default function RankingBoard({ liveRanking }) {
         if (period === 'LIVE') return;
 
         setLoading(true);
-        backendFetch(`/api/rankings?period=${period}`, { credentials: 'include' })
+        backendFetch(`/api/rankings?period=${period}&limit=50`, { credentials: 'include' })
             .then(res => {
                 if (!res.ok) throw new Error('Failed');
                 return res.json();
@@ -20,7 +20,8 @@ export default function RankingBoard({ liveRanking }) {
             .finally(() => setLoading(false));
     }, [period]);
 
-    const list = period === 'LIVE' ? liveRanking : apiRanking;
+    const rawList = period === 'LIVE' ? (liveRanking || []) : (apiRanking || []);
+    const list = rawList.slice(0, 50);
 
     return (
         <div className="panel ranking-panel">

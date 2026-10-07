@@ -14,6 +14,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ public class RankingQueryService {
     private final ScoreSnapshotRepository snapshotRepository;
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final int DEFAULT_LIMIT = 50;
 
     public enum RankingPeriod {
         LIVE, DAILY, WEEKLY, MONTHLY;
@@ -41,24 +43,27 @@ public class RankingQueryService {
     }
 
     public List<ScoreBoardEntry> getRanking(String rawPeriod) {
+        return getRanking(rawPeriod, DEFAULT_LIMIT);
+    }
+
+    public List<ScoreBoardEntry> getRanking(String rawPeriod, int limit) {
+        int capped = Math.min(Math.max(limit, 1), 100);
         RankingPeriod period = RankingPeriod.from(rawPeriod);
         return switch (period) {
-            case LIVE -> liveRanking();
-            case DAILY -> latestSnapshotRanking(SnapshotPeriod.DAILY);
-            case WEEKLY -> latestSnapshotRanking(SnapshotPeriod.WEEKLY);
-            case MONTHLY -> monthlyAggregateRanking();
+            case LIVE -> liveRanking(capped);
+            case DAILY -> latestSnapshotRanking(SnapshotPeriod.DAILY, capped);
+            case WEEKLY -> latestSnapshotRanking(SnapshotPeriod.WEEKLY, capped);
+            case MONTHLY -> monthlyAggregateRanking(capped);
         };
     }
 
-    private List<ScoreBoardEntry> liveRanking() {
-        return userRepository.findAll().stream()
-            .filter(u -> u.getScore() > 0)
-            .sorted(Comparator.comparingInt((dev.starq.picassolve.entity.User u) -> u.getScore()).reversed())
+    private List<ScoreBoardEntry> liveRanking(int limit) {
+        return userRepository.findTopByScore(PageRequest.of(0, limit)).stream()
             .map(u -> new ScoreBoardEntry(u.getName(), u.getTeam(), u.getScore()))
             .toList();
     }
 
-    private List<ScoreBoardEntry> latestSnapshotRanking(SnapshotPeriod period) {
+    private List<ScoreBoardEntry> latestSnapshotRanking(SnapshotPeriod period, int limit) {
         LocalDate latest = snapshotRepository.findTopByPeriodOrderBySnapshotDateDesc(period)
             .map(ScoreSnapshot::getSnapshotDate)
             .orElse(null);
@@ -67,6 +72,7 @@ public class RankingQueryService {
         return snapshotRepository.findByPeriodAndSnapshotDate(period, latest).stream()
             .filter(s -> s.getScore() > 0)
             .sorted(Comparator.comparingInt(ScoreSnapshot::getScore).reversed())
+            .limit(limit)
             .map(s -> new ScoreBoardEntry(s.getUsername(), s.getTeam(), s.getScore()))
             .toList();
     }
@@ -75,7 +81,7 @@ public class RankingQueryService {
         * 월간 랭킹: 이번 달 일간 스냅샷 합산.
         * 주간 리셋 후에도 월간 누적이 유지되도록 날짜 범위를 모읍니다.
         */
-    private List<ScoreBoardEntry> monthlyAggregateRanking() {
+    private List<ScoreBoardEntry> monthlyAggregateRanking(int limit) {
         LocalDate today = LocalDate.now(KST);
         LocalDate monthStart = today.withDayOfMonth(1);
 
@@ -90,6 +96,7 @@ public class RankingQueryService {
         return acc.values().stream()
             .filter(e -> e.getScore() > 0)
             .sorted(Comparator.comparingInt(ScoreBoardEntry::getScore).reversed())
+            .limit(limit)
             .toList();
     }
 }

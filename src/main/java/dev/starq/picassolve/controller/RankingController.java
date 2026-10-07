@@ -17,7 +17,10 @@ public class RankingController {
     private final RankingQueryService rankingQueryService;
 
     @GetMapping
-    public List<ScoreBoardEntry> getRanking(@RequestParam(defaultValue = "LIVE") String period) {
-        return rankingQueryService.getRanking(period);
+    public List<ScoreBoardEntry> getRanking(
+            @RequestParam(defaultValue = "LIVE") String period,
+            @RequestParam(defaultValue = "50") int limit) {
+        int capped = Math.min(Math.max(limit, 1), 100);
+        return rankingQueryService.getRanking(period, capped);
     }
 }

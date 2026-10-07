@@ -3,6 +3,13 @@ import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
 import { backendUrl } from '../lib/backend';
 
+const MAX_CHAT = 200;
+
+const appendChat = (prev, data) => {
+    const next = [...prev, data];
+    return next.length > MAX_CHAT ? next.slice(-MAX_CHAT) : next;
+};
+
 export const useGameSocket = (user, onDraw) => {
     const [connected, setConnected] = useState(false);
     const [chatMessages, setChatMessages] = useState([]);
@@ -54,7 +61,7 @@ export const useGameSocket = (user, onDraw) => {
                 // 1. Subscribe to Broadcasts
                 client.subscribe('/topic/chat', (msg) => {
                     const data = JSON.parse(msg.body);
-                    setChatMessages(prev => [...prev, data]);
+                    setChatMessages(prev => appendChat(prev, data));
                 });
 
                 client.subscribe('/topic/users', (msg) => {
@@ -90,12 +97,19 @@ export const useGameSocket = (user, onDraw) => {
                 client.subscribe('/user/queue/wordlen', (msg) => setWordLen(parseInt(msg.body, 10)));
 
                 client.subscribe('/user/queue/errors', (msg) => {
-                    setChatMessages(prev => [...prev, { from: 'SYSTEM', text: msg.body, system: true }]);
+                    setChatMessages(prev => appendChat(prev, { from: 'SYSTEM', text: msg.body, system: true }));
                 });
 
                 client.subscribe('/user/queue/draw', (msg) => {
-                    // Snapshot replay
+                    // Snapshot replay (legacy single-segment)
                     if (onDrawRef.current) onDrawRef.current(JSON.parse(msg.body));
+                });
+
+                client.subscribe('/user/queue/draw-batch', (msg) => {
+                    const segs = JSON.parse(msg.body);
+                    if (Array.isArray(segs) && onDrawRef.current) {
+                        for (const s of segs) onDrawRef.current(s);
+                    }
                 });
 
                 client.subscribe('/user/queue/canvas/clear', () => {
