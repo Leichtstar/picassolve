@@ -21,7 +21,9 @@ public class WebSocketEventListener {
         Principal user = event.getUser();
         if (user != null) {
             log.info("Received new WebSocket connection from: {}", user.getName());
-            gameService.login(user.getName());
+            if (!gameService.wsConnect(user.getName())) {
+                log.warn("WebSocket connect rejected (capacity or unknown user): {}", user.getName());
+            }
         }
     }
 
@@ -30,7 +32,7 @@ public class WebSocketEventListener {
         Principal user = event.getUser();
         if (user != null) {
             log.info("User disconnected: {}", user.getName());
-            gameService.logout(user.getName());
+            gameService.wsDisconnect(user.getName());
         }
     }
 }

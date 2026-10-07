@@ -19,6 +19,16 @@
 
 /* Base resets handled in base.css or localized here */
 
+
+.connection-banner {
+    background: #b45309;
+    color: #fff;
+    text-align: center;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
 .game-layout {
     display: flex;
     flex-direction: column;

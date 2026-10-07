@@ -29,3 +29,7 @@ CREATE TABLE IF NOT EXISTS score_snapshots (
     period VARCHAR(16) NOT NULL CHECK (period IN ('DAILY','WEEKLY','MONTHLY')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- ranking query / retention helpers
+CREATE INDEX IF NOT EXISTS idx_score_snapshots_period_date
+    ON score_snapshots (period, snapshot_date);

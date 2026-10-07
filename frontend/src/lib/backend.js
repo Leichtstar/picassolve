@@ -9,4 +9,17 @@ export const backendUrl = (path = '') => {
   return `${backendOrigin}/${path}`;
 };
 
-export const backendFetch = (path, init) => fetch(backendUrl(path), init);
+let onUnauthorized = null;
+
+/** Register a handler invoked when an API call returns 401 (session expired). */
+export const setUnauthorizedHandler = (handler) => {
+  onUnauthorized = handler;
+};
+
+export const backendFetch = async (path, init) => {
+  const res = await fetch(backendUrl(path), init);
+  if (res.status === 401 && typeof onUnauthorized === 'function') {
+    onUnauthorized();
+  }
+  return res;
+};
